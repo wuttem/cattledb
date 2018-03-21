@@ -125,3 +125,11 @@ def ts_monthly_right(ts):
         days[2] = 29
     ts = int(calendar.timegm(n)) + days[month] * 24 * 60 * 60 - 1
     return ts
+
+
+def daily_timestamps(from_ts, to_ts):
+    first = ts_daily_left(from_ts)
+    last = first
+    while last <= to_ts:
+        yield last
+        last = ts_daily_left(last + 24*60*60 + 1000)  # Add 1000 for correct behaviour in case of time diffs

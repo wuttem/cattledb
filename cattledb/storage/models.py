@@ -4,6 +4,9 @@
 from enum import Enum
 from collections import MutableSequence
 from collections import namedtuple
+import pendulum
+import msgpack
+import struct
 
 import bisect
 import logging
@@ -17,21 +20,22 @@ from .helper import ts_monthly_left, ts_monthly_right
 
 
 Aggregation = namedtuple('Aggregation', ['min', 'max', 'sum', 'count'])
+Point = namedtuple('Point', ['ts', 'value', 'dt'])
 
 
 class TimeSeries(object):
-    def __init__(self, key, values=None):
+    def __init__(self, key, values=None, force_float=True):
         self._timestamps = array.array("I")
+        self._timestamp_offsets = array.array("I")
         self._values = list()
+        self.force_float = force_float
         if values is not None:
             self.insert(values)
         self.key = key.lower()
         assert len(self.key) >= 2
 
     @classmethod
-    def new(cls, key, values=None):
-        """Factory Method to create Items.
-        """
+    def from_list(cls, key, values):
         return cls(key, values)
 
     def __len__(self):
@@ -41,7 +45,7 @@ class TimeSeries(object):
         if len(self) < 1:
             return False
         
-        assert len(self._timestamps) == len(self._values)
+        assert len(self._timestamps) == len(self._values) == len(self._timestamp_offsets)
         self.checkSorted()
         return True
 
@@ -62,6 +66,19 @@ class TimeSeries(object):
         h1 = self.to_hash()
         h2 = other.to_hash()
         return h1 == h2
+
+    def append_timeseries(self, other):
+        if not isinstance(other, TimeSeries):
+            raise ValueError("cannot append %s to TimeSeries", other)
+
+        assert bool(other)
+        assert self.ts_max < other.ts_min
+        assert self.key == other.key
+        assert self.force_float == other.force_float
+
+        self._timestamps += other._timestamps
+        self._timestamp_offsets += other._timestamp_offsets
+        self._values += other._values
 
     def __ne__(self, other):
         return not self == other  # NOT return not self.__eq__(other)
@@ -92,7 +109,15 @@ class TimeSeries(object):
         return len(self._timestamps)
 
     def _at(self, i):
-        return (self._timestamps[i], self._values[i])
+        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i])
+        return Point(self._timestamps[i], self._values[i], dt)
+
+    def _storage_item_at(self, i):
+        if self.force_float:
+            by = struct.pack("B", 1) + struct.pack("I", self._timestamp_offsets[i]) + struct.pack("f", self._values[i])
+        else:
+            by = struct.pack("B", 2) + struct.pack("I", self._timestamp_offsets[i]) + msgpack.packb(self._values[i])
+        return (self._timestamps[i], by)
 
     def __getitem__(self, key):
         return self._at(key)
@@ -103,25 +128,77 @@ class TimeSeries(object):
             out.append(self._at(i))
         return out
 
-    def insert_point(self, timestamp, value, overwrite=False):
-        timestamp = int(timestamp)
+    def insert_storage_item(self, timestamp, by):
+        f = int(struct.unpack("B", by[0:1])[0])
+        offset = int(struct.unpack("I", by[1:5])[0])
+        if f == 1 or self.force_float:
+            self.force_float = True
+            value = float(struct.unpack("f", by[5:9])[0])
+        else:
+            value = msgpack.unpackb(by[5:])
+
         idx = bisect.bisect_left(self._timestamps, timestamp)
         # Append
         if idx == len(self._timestamps):
             self._timestamps.append(timestamp)
             self._values.append(value)
+            self._timestamp_offsets.append(offset)
             return 1
         # Already Existing
         if self._timestamps[idx] == timestamp:
             # Replace
             logging.debug("duplicate insert")
             if overwrite:
+                self._timestamp_offsets[idx] = offset
                 self._values[idx] = value
                 return 1
             return 0
         # Insert
         self._timestamps.insert(idx, timestamp)
         self._values.insert(idx, value)
+        self._timestamp_offsets.insert(idx, offset)
+        return 1
+
+    def insert_point(self, dt, value, overwrite=False):
+        if isinstance(dt, int):
+            timestamp = dt
+            offset = 0
+        elif isinstance(dt, float):
+            timestamp = int(dt)
+            offset = 0
+        elif isinstance(dt, pendulum.Pendulum):
+            timestamp = dt.int_timestamp
+            offset = dt.offset
+        elif isinstance(dt, datetime):
+            pd = pendulum.instance(dt)
+            timestamp = pd.int_timestamp
+            offset = pd.offset
+        else:
+            raise ValueError("Invalid TS format: %s", dt)
+
+        idx = bisect.bisect_left(self._timestamps, timestamp)
+        # Force Float
+        if self.force_float:
+            value = float(value)
+        # Append
+        if idx == len(self._timestamps):
+            self._timestamps.append(timestamp)
+            self._values.append(value)
+            self._timestamp_offsets.append(offset)
+            return 1
+        # Already Existing
+        if self._timestamps[idx] == timestamp:
+            # Replace
+            logging.debug("duplicate insert")
+            if overwrite:
+                self._timestamp_offsets[idx] = offset
+                self._values[idx] = value
+                return 1
+            return 0
+        # Insert
+        self._timestamps.insert(idx, timestamp)
+        self._values.insert(idx, value)
+        self._timestamp_offsets.insert(idx, offset)
         return 1
 
     def insert(self, series):
@@ -131,16 +208,34 @@ class TimeSeries(object):
         self.checkSorted() # may be removed
         return counter
 
-    def _trim(self, ts_min, ts_max):
+    def trim(self, ts_min, ts_max):
         low = bisect.bisect_left(self._timestamps, ts_min)
         high = bisect.bisect_right(self._timestamps, ts_max)
         self._timestamps = self._timestamps[low:high]
         self._values = self._values[low:high]
+        self._timestamp_offsets = self._timestamp_offsets[low:high]
+
+    def trim_count_newest(self, count):
+        if len(self) <= count:
+            return
+        self._timestamps = self._timestamps[-int(count):]
+        self._values = self._values[-int(count):]
+        self._timestamp_offsets = self._timestamp_offsets[-int(count):]
+
+    def trim_count_oldest(self, count):
+        if len(self) <= count:
+            return
+        self._timestamps = self._timestamps[:int(count)]
+        self._values = self._values[:int(count)]
+        self._timestamp_offsets = self._timestamp_offsets[:int(count)]
 
     def all(self):
         """Return an iterator to get all ts value pairs.
         """
-        return zip(self._timestamps, self._values)
+        i = 0
+        while i < len(self._timestamps):
+            yield self._at(i)
+            i += 1
 
     def daily(self):
         """Generator to access daily data.
@@ -154,11 +249,10 @@ class TimeSeries(object):
             while (i + j < len(self._timestamps) and
                    lower_bound <= self._timestamps[i + j] <= upper_bound):
                 j += 1
-            yield ((self._timestamps[x], self._values[x])
-                   for x in range(i, i + j))
+            yield (self._at(x) for x in range(i, i + j))
             i += j
 
-    def daily_buckets(self):
+    def daily_storage_buckets(self):
         i = 0
         while i < len(self._timestamps):
             j = 0
@@ -167,8 +261,7 @@ class TimeSeries(object):
             while (i + j < len(self._timestamps) and
                    lower_bound <= self._timestamps[i + j] <= upper_bound):
                 j += 1
-            yield (lower_bound, [(self._timestamps[x], self._values[x])
-                   for x in range(i, i + j)])
+            yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
     def hourly(self):
@@ -183,8 +276,7 @@ class TimeSeries(object):
             while (i + j < len(self._timestamps) and
                    lower_bound <= self._timestamps[i + j] <= upper_bound):
                 j += 1
-            yield ((self._timestamps[x], self._values[x])
-                   for x in range(i, i + j))
+            yield (self._at(x) for x in range(i, i + j))
             i += j
 
     def aggregation(self, group="hourly", function="mean"):
@@ -220,6 +312,8 @@ class TimeSeries(object):
 
         for g in it():
             t = list(g)
-            ts = left(t[0][0])
-            value = func([x[1] for x in t])
-            yield (ts, value)
+            ts = left(t[0].ts)
+            offset = t[0].dt.offset
+            dt = pendulum.from_timestamp(ts, offset)
+            value = func([x.value for x in t])
+            yield Point(ts, value, dt)

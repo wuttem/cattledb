@@ -8,7 +8,7 @@ import binascii
 import datetime
 
 from cattledb.storage.models import TimeSeries, Aggregation
-from cattledb.storage.helper import to_ts
+from cattledb.storage.helper import to_ts, daily_timestamps
 
 
 class ModelTest(unittest.TestCase):
@@ -98,17 +98,17 @@ class ModelTest(unittest.TestCase):
             self.assertEqual(x[1], 5.0)
 
     def test_item(self):
-        i1 = TimeSeries("test")
+        i1 = TimeSeries("test", force_float=False)
         self.assertFalse(i1)
         i1.insert_point(1, (1.0, 2.0, 3.0))
         self.assertTrue(i1)
 
         i2 = TimeSeries("test1", [(1, 1.0)])
-        self.assertEqual(i2[0], (1, 1.0))
+        self.assertEqual(i2[0].value, 1.0)
         i2.insert_point(1, 2.0)
-        self.assertEqual(i2[0], (1, 1.0))
+        self.assertEqual(i2[0].value, 1.0)
         i2.insert_point(1, 2.0, overwrite=True)
-        self.assertEqual(i2[0], (1, 2.0))
+        self.assertEqual(i2[0].value, 2.0)
 
         i3 = TimeSeries("test2", [(1, 1.0)])
         self.assertNotEqual(i2, i3)
@@ -123,7 +123,8 @@ class ModelTest(unittest.TestCase):
         for j in range(10):
             i.insert_point(j, int(j * 2.1))
         self.assertEqual(len(i), 10)
-        self.assertEqual(i[3], (3, 6))
+        self.assertEqual(i[3].ts, 3)
+        self.assertEqual(i[3].value, 6)
 
     def test_rawitem(self):
         d = []
@@ -147,3 +148,17 @@ class ModelTest(unittest.TestCase):
         for i in range(100):
             self.assertEqual(l[i][0], i)
             self.assertEqual(l[i][1], i * 2.5)
+
+    def test_daily_timestamps(self):
+        x = list(daily_timestamps(0, 0))
+        self.assertEqual(x, [0])
+        x = list(daily_timestamps(0, 24*60*60-1))
+        self.assertEqual(x, [0])
+        x = list(daily_timestamps(0, 24*60*60))
+        self.assertEqual(x, [0, 86400])
+        x = list(daily_timestamps(0, 24*60*60+23))
+        self.assertEqual(x, [0, 86400])
+        x = list(daily_timestamps(0, 2*24*60*60-1))
+        self.assertEqual(x, [0, 86400])
+        x = list(daily_timestamps(0, 2*24*60*60))
+        self.assertEqual(x, [0, 86400, 2*24*60*60])

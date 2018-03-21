@@ -11,19 +11,18 @@ os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
 # gcloud beta emulators bigtable start
 
 db = Connection(project_id='smaxtec-system', instance_id='test')
-#db.create_tables()
+db.create_tables(silent=True)
 db.create_data_family("ph", silent=True)
 #print(db.write_data_cell("1234", "raw:6", "hello world"))
 #print(db.read_row("1234"))
 #print(db.write_data_cell("1234", "raw:7", "hello world"))
 #print(db.read_row("1234"))
 
-series = TimeSeries("ph")
+points = []
 ts = to_ts(datetime.datetime(2000, 1, 1, 0, 0))
-for _ in range(10):
-    for j in range(144):
-        series.insert_point(ts + j * 600, float(j % 6))
-    ts += 144 * 600
+for j in range(10*144):
+    points.append((ts + j * 600, float(j % 6)))
+series = TimeSeries.from_list("ph", points)
 db.insert_timeseries("mydevice", series)
 
 # print(db.read_row("mydevice#30004940"))
