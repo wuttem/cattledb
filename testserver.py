@@ -7,4 +7,4 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gc
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, workers=2)
+    app.run(host="0.0.0.0", port=5000, workers=4)

@@ -5,7 +5,7 @@ from enum import Enum
 from collections import MutableSequence
 from collections import namedtuple
 import pendulum
-#from datetime import timedelta
+from datetime import datetime
 import msgpack
 import struct
 
@@ -133,7 +133,7 @@ class TimeSeries(object):
             out.append(self._at(i))
         return out
 
-    def insert_storage_item(self, timestamp, by):
+    def insert_storage_item(self, timestamp, by, overwrite=False):
         f = int(struct.unpack("B", by[0:1])[0])
         offset = int(struct.unpack("i", by[1:5])[0])
         if f == 1 or self.force_float:
