@@ -6,7 +6,7 @@ import os
 from sanic import Sanic
 
 from ..settings import available_configs
-from .dbext import DBAdapter
+from ..storage import AsyncDB
 
 
 def setup_logging(config):
@@ -23,11 +23,22 @@ def setup_logging(config):
 
 
 async def setup_db(app, loop):
-    app.db = DBAdapter()
-    app.db.init_app(app, loop=loop)
+    project_id = app.config.GCP_PROJECT_ID
+    instance_id = app.config.GCP_INSTANCE_ID
+    credentials = app.config.GCP_CREDENTIALS
+    read_only = app.config.READ_ONLY
+    pool_size = app.config.POOL_SIZE
+    table_prefix = app.config.TABLE_PREFIX
+    if app.config.STAGING:
+         read_only=True
+    app.db = AsyncDB(project_id=project_id, instance_id=instance_id, loop=loop,
+                     read_only=read_only, pool_size=pool_size, table_prefix=table_prefix,
+                     credentials=credentials)
+
 
 async def close_db(app, loop):
     app.db = None
+
 
 def create_app(settings_override=None,
                config_name=None):

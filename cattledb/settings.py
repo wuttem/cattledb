@@ -6,10 +6,16 @@ import os
 
 
 class BaseConfig(object):
-    SECRET_KEY = 'O\x06\xb4\x8aT7\xcc\xf8WKm*\xeb\xb3\x8fW\xe3l\x14Y\xed+\xfc6'
     TESTING = True
     DEBUG = True
     STAGING = False
+
+    GCP_PROJECT_ID = 'test-system'
+    GCP_INSTANCE_ID = 'test'
+    GCP_CREDENTIALS = None
+    READ_ONLY = False
+    POOL_SIZE = 10
+    TABLE_PREFIX = "cdb"
 
     CLOUD_LOGGING = False
 

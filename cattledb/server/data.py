@@ -4,6 +4,7 @@
 from sanic.response import json
 from sanic import Blueprint
 import asyncio
+import pendulum
 
 # import aiohttp
 
@@ -16,16 +17,23 @@ async def put_data(request):
     device_id = request.json["device_id"]
     metric = request.json["metric"]
     data = request.json["data"]
-    print(request.app.db.getTest())
-    #request.app.db.set_loop(asyncio.get_event_loop())
-    res = await request.app.db.put(device_id, metric, data)
+    data_ts = map(lambda i: (pendulum.parse(i[0]), i[1]), data)
+    res = await request.app.db.put(device_id, metric, data_ts)
     return json({"status": "ok"})
 
-@data_bp.route('/sleep', methods=['POST'])
-async def sleep_test(request):
-    await asyncio.sleep(1)
-    data = {'status': 'sleep'}
-    return json(data)
+
+@data_bp.route('/get', methods=['GET'])
+async def get_data(request):
+    device_id = request.args.get("device_id")
+    metric = request.args.get("metric")
+    from_dt = pendulum.parse(request.args.get("from_dt"))
+    to_dt = pendulum.parse(request.args.get("to_dt"))
+    from_ts = from_dt.int_timestamp
+    to_ts = to_dt.int_timestamp
+    res = await request.app.db.get(device_id, metric, from_ts, to_ts)
+    data = res.to_serializable()
+    return json({"data": data})
+
 
 # async def fetch(session, url):
 #     """

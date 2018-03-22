@@ -5,6 +5,7 @@ from enum import Enum
 from collections import MutableSequence
 from collections import namedtuple
 import pendulum
+#from datetime import timedelta
 import msgpack
 import struct
 
@@ -26,7 +27,7 @@ Point = namedtuple('Point', ['ts', 'value', 'dt'])
 class TimeSeries(object):
     def __init__(self, key, values=None, force_float=True):
         self._timestamps = array.array("I")
-        self._timestamp_offsets = array.array("I")
+        self._timestamp_offsets = array.array("i")
         self._values = list()
         self.force_float = force_float
         if values is not None:
@@ -109,15 +110,19 @@ class TimeSeries(object):
         return len(self._timestamps)
 
     def _at(self, i):
-        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i])
+        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
         return Point(self._timestamps[i], self._values[i], dt)
 
     def _storage_item_at(self, i):
         if self.force_float:
-            by = struct.pack("B", 1) + struct.pack("I", self._timestamp_offsets[i]) + struct.pack("f", self._values[i])
+            by = struct.pack("B", 1) + struct.pack("i", self._timestamp_offsets[i]) + struct.pack("f", self._values[i])
         else:
-            by = struct.pack("B", 2) + struct.pack("I", self._timestamp_offsets[i]) + msgpack.packb(self._values[i])
+            by = struct.pack("B", 2) + struct.pack("i", self._timestamp_offsets[i]) + msgpack.packb(self._values[i])
         return (self._timestamps[i], by)
+
+    def _serializable_at(self, i):
+        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
+        return (dt.isoformat(), self._values[i])
 
     def __getitem__(self, key):
         return self._at(key)
@@ -130,7 +135,7 @@ class TimeSeries(object):
 
     def insert_storage_item(self, timestamp, by):
         f = int(struct.unpack("B", by[0:1])[0])
-        offset = int(struct.unpack("I", by[1:5])[0])
+        offset = int(struct.unpack("i", by[1:5])[0])
         if f == 1 or self.force_float:
             self.force_float = True
             value = float(struct.unpack("f", by[5:9])[0])
@@ -264,6 +269,12 @@ class TimeSeries(object):
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
+    def to_serializable(self):
+        i = 0
+        while i < len(self._timestamps):
+            yield self._serializable_at(i)
+            i += 1
+
     def hourly(self):
         """Generator to access hourly data.
         This will return an inner generator.
@@ -314,6 +325,6 @@ class TimeSeries(object):
             t = list(g)
             ts = left(t[0].ts)
             offset = t[0].dt.offset
-            dt = pendulum.from_timestamp(ts, offset)
+            dt = pendulum.from_timestamp(ts, offset/3600.0)
             value = func([x.value for x in t])
             yield Point(ts, value, dt)
