@@ -5,8 +5,8 @@ import logging
 import os
 from sanic import Sanic
 
-
-from .settings import available_configs
+from ..settings import available_configs
+from .dbext import DBAdapter
 
 
 def setup_logging(config):
@@ -21,6 +21,13 @@ def setup_logging(config):
     else:
         logging.basicConfig(level=logging.INFO)
 
+
+async def setup_db(app, loop):
+    app.db = DBAdapter()
+    app.db.init_app(app, loop=loop)
+
+async def close_db(app, loop):
+    app.db = None
 
 def create_app(settings_override=None,
                config_name=None):
@@ -40,6 +47,10 @@ def create_app(settings_override=None,
 
     setup_logging(app.config)
 
+    # Init Db
+    app.listener('before_server_start')(setup_db)
+    app.listener('after_server_stop')(close_db)
+
     # Setting Hostname
     import socket
     app.host_name = str(socket.gethostname())
@@ -47,8 +58,10 @@ def create_app(settings_override=None,
     #app.before_request(my_before_request)
     #app.after_request(my_after_request)
 
-    # Main API
-    from .api import register
-    register(app)
+    # Register API
+    from .base import base_bp
+    app.blueprint(base_bp)
+    from .data import data_bp
+    app.blueprint(data_bp)
 
     return app

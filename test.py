@@ -5,14 +5,15 @@ from cattledb.storage.models import TimeSeries
 from cattledb.storage.helper import to_ts
 
 # set env
-os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
+os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8080"
 
 # start emulator
 # gcloud beta emulators bigtable start
 
-db = Connection(project_id='smaxtec-system', instance_id='test')
+db = Connection(project_id='test-system', instance_id='test')
 db.create_tables(silent=True)
 db.create_data_family("ph", silent=True)
+exit()
 #print(db.write_data_cell("1234", "raw:6", "hello world"))
 #print(db.read_row("1234"))
 #print(db.write_data_cell("1234", "raw:7", "hello world"))

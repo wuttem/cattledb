@@ -106,7 +106,6 @@ class Connection(object):
     def get_row_key(cls, base_key, day_ts):
         reverse_day_ts = cls.reverse_day_key(day_ts)
         row_key = "{}#{}".format(base_key, reverse_day_ts)
-        print(row_key)
         return row_key
 
     def insert_timeseries(self, device_id, ts):
@@ -115,18 +114,17 @@ class Connection(object):
         timer = time.time()
         with self.pool.connection() as conn:
             dt = self.data_table(conn)
-            b = Batch(dt, )
-            for day, bucket in ts.daily_storage_buckets():
-                row_key = self.get_row_key(device_id, day)
-                data = {}
-                for timestamp, val in bucket:
-                    cn = "{}:{}".format(metric, timestamp)
-                    data[cn] = val
-                b.put(row_key, data)
-            b.send()
+            with Batch(dt) as b:
+                for day, bucket in ts.daily_storage_buckets():
+                    row_key = self.get_row_key(device_id, day)
+                    data = {}
+                    for timestamp, val in bucket:
+                        cn = "{}:{}".format(metric, timestamp)
+                        data[cn] = val
+                    b.put(row_key, data)
         timer = time.time() - timer
         logger.info("INSERT: {}.{}, {} points in {}".format(device_id, metric, len(ts), timer))
-        print("INSERT: {}.{}, {} points in {}".format(device_id, metric, len(ts), timer))
+        # print("INSERT: {}.{}, {} points in {}".format(device_id, metric, len(ts), timer))
         return len(ts)
     
     def insert(self, device_id, metric, data, force_float=True):
@@ -150,7 +148,6 @@ class Connection(object):
             if m in metrics:
                 ts = int(s[1])
                 out[m].insert_storage_item(ts, value)
-        print(out)
         return out
 
     def get_timeseries(self, device_id, metrics, from_ts, to_ts):
@@ -161,10 +158,7 @@ class Connection(object):
         timer = time.time()
 
         row_keys = [self.get_row_key(device_id, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        print(row_keys)
-
         columns = ["{}:".format(m) for m in metrics]
-        print(columns)
 
         timeseries = {m: TimeSeries(m) for m in metrics}
         with self.pool.connection() as conn:
@@ -191,7 +185,7 @@ class Connection(object):
 
         timer = time.time() - timer
         logger.info("GET: {}.{}, {} points in {}".format(device_id, metrics, size, timer))
-        print("GET: {}.{}, {} points in {}".format(device_id, metrics, size, timer))
+        # print("GET: {}.{}, {} points in {}".format(device_id, metrics, size, timer))
         return out
 
     def get_single_timeseries(self, device_id, metric, from_ts, to_ts):
@@ -204,9 +198,6 @@ class Connection(object):
         start_search_row = self.get_row_key(device_id, max_ts).encode("utf-8")
         row_prefix = "{}#".format(device_id).encode("utf-8")
         columns = ["{}:".format(m) for m in metrics]
-        print(columns)
-        print(start_search_row)
-        print(row_prefix)
 
         timer = time.time()
 
@@ -216,10 +207,10 @@ class Connection(object):
         with self.pool.connection() as conn:
             dt = self.data_table(conn)
             # with prefix
-            # res = dt.scan(row_start=start_search_row, row_prefix=row_prefix, limit=max_days)
+            # res = dt.scan(row_prefix=row_prefix, limit=max_days)
             # with row start
             res = dt.scan(row_start=start_search_row, limit=max_days)
-            for row_key, data_dict  in res:
+            for row_key, data_dict in res:
                 # Break if we get another deviceid
                 if not row_key.startswith(row_prefix):
                     break
@@ -245,10 +236,9 @@ class Connection(object):
             t.trim_count_newest(count)
             size += len(t)
             out.append(t)
-        print(out)
 
 
         timer = time.time() - timer
         logger.info("SCAN: {}.{}, {} points in {}".format(device_id, metrics, 1, timer))
-        print("SCAN: {}.{}, {} points in {}".format(device_id, metrics, 1, timer))
+        # print("SCAN: {}.{}, {} points in {}".format(device_id, metrics, 1, timer))
         return out

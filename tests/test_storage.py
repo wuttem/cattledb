@@ -25,6 +25,7 @@ class StorageTest(unittest.TestCase):
     def setUpClass(cls):
         logging.basicConfig(level=logging.INFO)
         os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
         db = Connection(project_id='test-system', instance_id='test')
