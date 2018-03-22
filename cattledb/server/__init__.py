@@ -4,6 +4,7 @@
 import logging
 import os
 from sanic import Sanic
+from sanic_compress import Compress
 
 from ..settings import available_configs
 from ..storage import AsyncDB
@@ -57,6 +58,9 @@ def create_app(settings_override=None,
     #app.config.from_object(settings_override)
 
     setup_logging(app.config)
+
+    # Init Extensions
+    Compress(app)
 
     # Init Db
     app.listener('before_server_start')(setup_db)
