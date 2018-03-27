@@ -14,6 +14,8 @@ import logging
 import array
 import hashlib
 
+from .protos_pb2 import FloatTimeSeries
+
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_hourly_left, ts_hourly_right
 from .helper import ts_weekly_left, ts_weekly_right
@@ -34,6 +36,15 @@ class TimeSeries(object):
             self.insert(values)
         self.key = key.lower()
         assert len(self.key) >= 2
+
+    @classmethod
+    def from_proto(cls, p):
+        i = cls(p.metric, force_float=True)
+        i._timestamps = array.array("I", p.timestamps)
+        i._timestamp_offsets = array.array("i", p.timestamp_offsets)
+        i._values = list(p.values)
+        assert bool(i)
+        return i
 
     @classmethod
     def from_list(cls, key, values):
@@ -268,6 +279,18 @@ class TimeSeries(object):
                 j += 1
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
+
+    def to_proto(self, device_id):
+        assert len(device_id) >= 3
+        if not self.force_float:
+            raise ValueError("cannot encode non-float timeseries to protobuf")
+        ts = FloatTimeSeries()
+        ts.metric = self.key
+        ts.device_id = device_id
+        ts.values[:] = self._values
+        ts.timestamps[:] = self._timestamps
+        ts.timestamp_offsets[:] = self._timestamp_offsets
+        return ts
 
     def to_serializable(self):
         i = 0

@@ -13,11 +13,14 @@ from google.cloud.happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps
 from .models import TimeSeries
+from .protos_pb2 import FloatTimeSeries, FloatTimeSeriesList
 
 DATA_TABLE_NAME = "timeseries"
-META_TABLE_NAME = "metadata"
+EVENT_TABLE_NAME = "events" # row: device#ts colfam: eventname (upload, sensorinfo)
+META_TABLE_NAME = "metadata" # row: deviceid data: last upload, last info
+COUNT_TABLE_NAME = "counter" # row: yearmonth#02000034 colfam: day, data: hour, (device1, device2)
 
-ALL_TABLES = [DATA_TABLE_NAME, META_TABLE_NAME]
+ALL_TABLES = [DATA_TABLE_NAME, EVENT_TABLE_NAME, META_TABLE_NAME, COUNT_TABLE_NAME]
 MAX_GET_SIZE = 400 * 24 * 60 * 60  # a little bit more than a year
 
 logger = logging.getLogger(__name__)
@@ -131,6 +134,15 @@ class Connection(object):
         ts = TimeSeries(metric, data, force_float=force_float)
         return self.insert_timeseries(device_id, ts)
 
+    def insert_proto(self, payload):
+        p = FloatTimeSeries()
+        p.ParseFromString(payload)
+        assert 2 <= len(p.metric) <= 64
+        assert 3 <= len(p.device_id) <= 32
+        device_id = p.device_id
+        ts = TimeSeries.from_proto(p)
+        return self.insert_timeseries(device_id, ts)
+
     def insert_bulk(self, inserts):
         out = []
         for i in inserts:
@@ -149,6 +161,12 @@ class Connection(object):
                 ts = int(s[1])
                 out[m].insert_storage_item(ts, value)
         return out
+
+    def get_timeseries_proto(self, device_id, metrics, from_ts, to_ts):
+        res = self.get_timeseries(device_id, metrics, from_ts, to_ts)
+        l = FloatTimeSeriesList()
+        l.data.extend([r.to_proto(device_id) for r in res])
+        return l.SerializeToString()
 
     def get_timeseries(self, device_id, metrics, from_ts, to_ts):
         assert from_ts <= to_ts
@@ -217,7 +235,6 @@ class Connection(object):
                     break
 
                 # Append to Timeseries
-                print("Appending: {}".format(row_key))
                 for key, value in data_dict.items():
                     s = key.decode("utf-8").split(":")
                     if len(s) != 2:
@@ -237,7 +254,6 @@ class Connection(object):
             t.trim_count_newest(count)
             size += len(t)
             out.append(t)
-
 
         timer = time.time() - timer
         logger.info("SCAN: {}.{}, {} points in {}".format(device_id, metrics, 1, timer))

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+message FloatItem {
+    sint32 offset = 1;
+    float value = 2;
+}
+
+message BlobItem {
+    sint32 offset = 1;
+    bytes value = 2;
+}
+
+message FloatTimeSeries {
+    string device_id = 1;
+    string metric = 2;
+    repeated int64 timestamps = 3;
+    repeated float values = 4;
+    repeated sint32 timestamp_offsets = 5;
+}
+
+message FloatTimeSeriesList {
+    repeated FloatTimeSeries data = 1;
+}

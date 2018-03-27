@@ -24,8 +24,8 @@ class StorageTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.INFO)
-        os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
+        # os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
+        # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
         db = Connection(project_id='test-system', instance_id='test')
@@ -79,7 +79,6 @@ class StorageTest(unittest.TestCase):
         ph = s[1]
         self.assertEqual(ph[0].ts, 302 * 600)
         self.assertEqual(ph[-1].ts, 501 * 600)
-
 
     # def test_cassandra_rewrite(self):
     #     cassandra_host = os.getenv('CASSANDRA_HOST', 'localhost')

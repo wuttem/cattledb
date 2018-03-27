@@ -25,5 +25,17 @@ class AsyncDB(object):
     async def put(self, device_id, metric, data):
         return await self.loop.run_in_executor(self.pool, self.db.insert, device_id, metric, data, True)
 
-    async def get(self, device_id, metric, from_dt, to_dt):
+    async def put_proto(self, payload):
+        return await self.loop.run_in_executor(self.pool, self.db.insert_proto, payload)
+
+    async def get(self, device_id, metrics, from_dt, to_dt):
+        return await self.loop.run_in_executor(self.pool, self.db.get_timeseries, device_id, metrics, from_dt, to_dt)
+
+    async def get_last(self, device_id, metrics, count=1, max_days=365):
+        return await self.loop.run_in_executor(self.pool, self.db.get_last_values, device_id, metrics, count, max_days)
+
+    async def get_proto(self, device_id, metrics, from_dt, to_dt):
+        return await self.loop.run_in_executor(self.pool, self.db.get_timeseries_proto, device_id, metrics, from_dt, to_dt)
+
+    async def get_single(self, device_id, metric, from_dt, to_dt):
         return await self.loop.run_in_executor(self.pool, self.db.get_single_timeseries, device_id, metric, from_dt, to_dt)

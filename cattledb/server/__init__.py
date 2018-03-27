@@ -60,6 +60,7 @@ def create_app(settings_override=None,
     setup_logging(app.config)
 
     # Init Extensions
+    app.config['COMPRESS_MIMETYPES'] = {'text/html', 'application/json', 'text/xml', 'text/csv', 'application/x-protobuf'}
     Compress(app)
 
     # Init Db

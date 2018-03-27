@@ -9,6 +9,7 @@ import datetime
 
 from cattledb.storage.models import TimeSeries, Aggregation
 from cattledb.storage.helper import to_ts, daily_timestamps
+from cattledb.storage.protos_pb2 import FloatTimeSeries
 
 
 class ModelTest(unittest.TestCase):
@@ -162,3 +163,18 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(x, [0, 86400])
         x = list(daily_timestamps(0, 2*24*60*60))
         self.assertEqual(x, [0, 86400, 2*24*60*60])
+
+    def test_proto(self):
+        res = TimeSeries("ddd")
+        ts = to_ts(datetime.datetime(2000, 1, 1, 0, 0))
+        for j in range(500):
+            res.insert_point(j * 600, float(j % 6))
+        rb = res.to_proto_bytes("my_sensor")
+        p = FloatTimeSeries()
+        p.ParseFromString(rb)
+        self.assertEqual(len(p.timestamps), 500)
+        self.assertEqual(len(p.timestamp_offsets), 500)
+        self.assertEqual(len(p.values), 500)
+
+        ts2 = TimeSeries.from_proto(p)
+        self.assertEqual(len(ts2), 500)
