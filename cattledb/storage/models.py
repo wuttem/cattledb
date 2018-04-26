@@ -14,7 +14,7 @@ import logging
 import array
 import hashlib
 
-from .protos_pb2 import FloatTimeSeries
+from ..grpcserver.cdb_pb2 import FloatTimeSeries
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_hourly_left, ts_hourly_right
@@ -24,10 +24,12 @@ from .helper import ts_monthly_left, ts_monthly_right
 
 Aggregation = namedtuple('Aggregation', ['min', 'max', 'sum', 'count'])
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
+EventList = namedtuple('EventList', ['key', 'name', 'events'])
+Event = namedtuple('Event', ['ts', 'data'])
 
 
 class TimeSeries(object):
-    def __init__(self, key, values=None, force_float=True):
+    def __init__(self, key, metric, values=None, force_float=True):
         self._timestamps = array.array("I")
         self._timestamp_offsets = array.array("i")
         self._values = list()
@@ -35,20 +37,23 @@ class TimeSeries(object):
         if values is not None:
             self.insert(values)
         self.key = key.lower()
+        self.metric = metric.lower()
         assert len(self.key) >= 2
+        assert len(self.metric) >= 2
 
     @classmethod
     def from_proto(cls, p):
-        i = cls(p.metric, force_float=True)
+        i = cls(p.key, p.metric, force_float=True)
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
         i._values = list(p.values)
-        assert bool(i)
+        if not bool(i):
+            raise ValueError("empty or invalid timeseries")
         return i
 
     @classmethod
-    def from_list(cls, key, values):
-        return cls(key, values)
+    def from_list(cls, key, metric, values):
+        return cls(key, metric, values)
 
     def __len__(self):
         return len(self._timestamps)
@@ -67,8 +72,8 @@ class TimeSeries(object):
         assert all(b >= a for a, b in zip(self._timestamps, it))
 
     def to_hash(self):
-        s = "{}.{}.{}.{}".format(self.key, len(self), 
-                                 self.ts_min, self.ts_max)
+        s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self), 
+                                    self.ts_min, self.ts_max)
         return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
     def __eq__(self, other):
@@ -86,6 +91,7 @@ class TimeSeries(object):
         assert bool(other)
         assert self.ts_max < other.ts_min
         assert self.key == other.key
+        assert self.metric == other.metric
         assert self.force_float == other.force_float
 
         self._timestamps += other._timestamps
@@ -101,8 +107,8 @@ class TimeSeries(object):
             m = self._timestamps[0]
         else:
             m = -1
-        return "<{} series({}), min_ts: {}>".format(
-            self.key, l, m)
+        return "<{}.{} series({}), min_ts: {}>".format(
+            self.key, self.metric, l, m)
 
     @property
     def ts_max(self):
@@ -189,6 +195,9 @@ class TimeSeries(object):
             pd = pendulum.instance(dt)
             timestamp = pd.int_timestamp
             offset = pd.offset
+        elif isinstance(dt, tuple):
+            timestamp = int(dt[0])
+            offset = int(dt[1])
         else:
             raise ValueError("Invalid TS format: %s", dt)
 
@@ -280,13 +289,12 @@ class TimeSeries(object):
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
-    def to_proto(self, device_id):
-        assert len(device_id) >= 3
+    def to_proto(self):
         if not self.force_float:
             raise ValueError("cannot encode non-float timeseries to protobuf")
         ts = FloatTimeSeries()
-        ts.metric = self.key
-        ts.device_id = device_id
+        ts.metric = self.metric
+        ts.key = self.key
         ts.values[:] = self._values
         ts.timestamps[:] = self._timestamps
         ts.timestamp_offsets[:] = self._timestamp_offsets

@@ -1,6 +1,6 @@
 
 import os
-from cattledb.server import create_app
+from cattledb.restserver import create_app
 
 os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8080"
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"

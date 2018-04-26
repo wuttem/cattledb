@@ -9,7 +9,7 @@ import datetime
 
 from cattledb.storage.models import TimeSeries, Aggregation
 from cattledb.storage.helper import to_ts, daily_timestamps
-from cattledb.storage.protos_pb2 import FloatTimeSeries
+from cattledb.grpcserver.cdb_pb2 import FloatTimeSeries
 
 
 class ModelTest(unittest.TestCase):
@@ -28,7 +28,7 @@ class ModelTest(unittest.TestCase):
         logging.basicConfig(level=logging.INFO)
 
     def test_aggregations(self):
-        res = TimeSeries("ddd")
+        res = TimeSeries("ddd", "temp")
         ts = to_ts(datetime.datetime(2000, 1, 1, 0, 0))
         for _ in range(10):
             for j in range(144):
@@ -99,28 +99,28 @@ class ModelTest(unittest.TestCase):
             self.assertEqual(x[1], 5.0)
 
     def test_item(self):
-        i1 = TimeSeries("test", force_float=False)
+        i1 = TimeSeries("test", "ph", force_float=False)
         self.assertFalse(i1)
         i1.insert_point(1, (1.0, 2.0, 3.0))
         self.assertTrue(i1)
 
-        i2 = TimeSeries("test1", [(1, 1.0)])
+        i2 = TimeSeries("test1", "ph", [(1, 1.0)])
         self.assertEqual(i2[0].value, 1.0)
         i2.insert_point(1, 2.0)
         self.assertEqual(i2[0].value, 1.0)
         i2.insert_point(1, 2.0, overwrite=True)
         self.assertEqual(i2[0].value, 2.0)
 
-        i3 = TimeSeries("test2", [(1, 1.0)])
+        i3 = TimeSeries("test2", "ph", [(1, 1.0)])
         self.assertNotEqual(i2, i3)
 
-        i4 = TimeSeries("test1", [(1, 1.0)])
+        i4 = TimeSeries("test1", "ph", [(1, 1.0)])
         self.assertEqual(i2, i4)
 
         self.assertEqual(i2.to_hash(), i4.to_hash())
 
     def test_intdata(self):
-        i = TimeSeries("int")
+        i = TimeSeries("int", "ph")
         for j in range(10):
             i.insert_point(j, int(j * 2.1))
         self.assertEqual(len(i), 10)
@@ -138,7 +138,7 @@ class ModelTest(unittest.TestCase):
         random.shuffle(d1)
         random.shuffle(d2)
 
-        i = TimeSeries("ph1")
+        i = TimeSeries("ph_sensor", "ph")
         for t, v in d1:
             i.insert_point(t, v)
         i.insert(d2)
@@ -165,16 +165,18 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(x, [0, 86400, 2*24*60*60])
 
     def test_proto(self):
-        res = TimeSeries("ddd")
+        res = TimeSeries("ddd", "ph")
         ts = to_ts(datetime.datetime(2000, 1, 1, 0, 0))
         for j in range(500):
             res.insert_point(j * 600, float(j % 6))
-        rb = res.to_proto_bytes("my_sensor")
+        rb = res.to_proto()
         p = FloatTimeSeries()
-        p.ParseFromString(rb)
+        p.ParseFromString(rb.SerializeToString())
         self.assertEqual(len(p.timestamps), 500)
         self.assertEqual(len(p.timestamp_offsets), 500)
         self.assertEqual(len(p.values), 500)
+        self.assertEqual(p.key, "ddd")
+        self.assertEqual(p.metric, "ph")
 
         ts2 = TimeSeries.from_proto(p)
         self.assertEqual(len(ts2), 500)

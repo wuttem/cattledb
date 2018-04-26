@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+service TimeSeries {
+  // pull
+  rpc getFloat (TimeSeriesRequest) returns (FloatTimeSeries) {}
+  rpc getMultiFloat (MultiTimeSeriesRequest) returns (FloatTimeSeriesList) {}
+  rpc getDict (TimeSeriesRequest) returns (DictTimeSeries) {}
+
+  // push
+  rpc putFloat (FloatTimeSeries) returns (PutResult) {}
+  rpc putMultiFloat (FloatTimeSeriesList) returns (PutResult) {}
+  rpc putDict (DictTimeSeries) returns (PutResult) {}
+
+  rpc deleteFloat (MultiTimeSeriesRequest) returns (DeleteResult) {}
+  rpc deleteDict (TimeSeriesRequest) returns (DeleteResult) {}
+}
+
+message TimeSeriesRequest {
+    string key = 1;
+    string metric = 2;
+    string from_datetime = 3;
+    string to_datetime = 4;
+}
+
+message MultiTimeSeriesRequest {
+    string key = 1;
+    string from_datetime = 3;
+    string to_datetime = 4;
+    repeated string metrics = 6;
+}
+
+message PutResult {
+    int32 code = 1;
+    int64 counter = 2;
+    string message = 3;
+}
+
+message DeleteResult {
+    int32 code = 1;
+    int64 counter = 2;
+    string message = 3;
+}
+
+message FloatItem {
+    sint32 offset = 1;
+    float value = 2;
+}
+
+message BlobItem {
+    sint32 offset = 1;
+    bytes value = 2;
+}
+
+message Pair {
+   string key = 1;
+   string value = 2;
+}
+
+message Dictionary {
+   repeated Pair pairs = 1;
+}
+
+message DictTimeSeries {
+    string key = 1;
+    string metric = 2;
+    repeated int64 timestamps = 3;
+    repeated Dictionary values = 4;
+    repeated sint32 timestamp_offsets = 5;
+}
+
+message FloatTimeSeries {
+    string key = 1;
+    string metric = 2;
+    repeated int64 timestamps = 3;
+    repeated float values = 4;
+    repeated sint32 timestamp_offsets = 5;
+}
+
+message FloatTimeSeriesList {
+    repeated FloatTimeSeries data = 1;
+}
