@@ -7,9 +7,9 @@ import logging
 import binascii
 import datetime
 
-from cattledb.storage.models import TimeSeries, Aggregation
+from cattledb.storage.models import TimeSeries, SerializableDict, SeriesType
 from cattledb.storage.helper import to_ts, daily_timestamps
-from cattledb.grpcserver.cdb_pb2 import FloatTimeSeries
+from cattledb.grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary
 
 
 class ModelTest(unittest.TestCase):
@@ -98,10 +98,10 @@ class ModelTest(unittest.TestCase):
         for x in g:
             self.assertEqual(x[1], 5.0)
 
-    def test_item(self):
-        i1 = TimeSeries("test", "ph", force_float=False)
+    def test_dictitem(self):
+        i1 = TimeSeries("test", "ph", series_type=SeriesType.DICTSERIES)
         self.assertFalse(i1)
-        i1.insert_point(1, (1.0, 2.0, 3.0))
+        i1.insert_point(1, dict(hey=1.0, ho=2.0))
         self.assertTrue(i1)
 
         i2 = TimeSeries("test1", "ph", [(1, 1.0)])
@@ -169,9 +169,8 @@ class ModelTest(unittest.TestCase):
         ts = to_ts(datetime.datetime(2000, 1, 1, 0, 0))
         for j in range(500):
             res.insert_point(j * 600, float(j % 6))
-        rb = res.to_proto()
         p = FloatTimeSeries()
-        p.ParseFromString(rb.SerializeToString())
+        p.ParseFromString(res.to_proto_bytes())
         self.assertEqual(len(p.timestamps), 500)
         self.assertEqual(len(p.timestamp_offsets), 500)
         self.assertEqual(len(p.values), 500)
@@ -180,3 +179,17 @@ class ModelTest(unittest.TestCase):
 
         ts2 = TimeSeries.from_proto(p)
         self.assertEqual(len(ts2), 500)
+
+        ts3 = TimeSeries.from_proto_bytes(ts2.to_proto_bytes())
+        self.assertEqual(len(ts3), 500)
+
+    def test_dict(self):
+        d1 = SerializableDict(hello="wörld", föö="bär")
+        d2 = SerializableDict({"1": 1, 2:3.4})
+
+        self.assertEqual(d1["hello"], "wörld")
+        self.assertEqual(d2["1"], 1)
+        self.assertEqual(d2[2], 3.4)
+
+        d = SerializableDict.from_proto_bytes(d1.to_proto_bytes())
+        self.assertEqual(d1["föö"], "bär")

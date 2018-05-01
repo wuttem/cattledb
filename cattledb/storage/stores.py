@@ -15,7 +15,7 @@ from google.cloud import happybase
 from google.cloud.happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps
-from .models import TimeSeries, Event, EventList
+from .models import TimeSeries, EventList
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
 
@@ -377,8 +377,8 @@ class TimeSeriesStore(object):
         # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
         return len(ts)
     
-    def insert(self, key, metric, data, force_float=True):
-        ts = TimeSeries(key, metric, data, force_float=force_float)
+    def insert(self, key, metric, data):
+        ts = TimeSeries(key, metric, data)
         return self.insert_timeseries(ts)
 
     def insert_bulk(self, inserts):
@@ -558,33 +558,57 @@ class EventStore(object):
         row_key = "{}#{}#{}".format(base_key, name, reverse_day_ts)
         return row_key
 
-    def insert_events(self, events):
+    def insert_events(self, event_list):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute insert_events command in readonly mode")    
+            raise RuntimeError("Cannot execute insert_eventlist command in readonly mode")    
 
-        key = events.key
-        name = events.name
-        evs = events.events
-
-        assert 1 <= len(evs) < 100
+        assert bool(event_list)
+        name = event_list.metric
+        key = event_list.key
 
         timer = time.time()
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             with Batch(dt) as b:
-                for ev in evs:
-                    row_key = self.get_row_key(key, name, ev.ts)
-                    cn = "e:{}".format(ev.ts)
-                    data = {cn: json.dumps(ev.data).encode("utf-8")}
+                for day, bucket in event_list.daily_storage_buckets():
+                    row_key = self.get_row_key(key, name, day)
+                    data = {}
+                    for timestamp, val in bucket:
+                        cn = "e:{}".format(timestamp)
+                        data[cn] = val
                     b.put(row_key, data)
-
         timer = time.time() - timer
-        logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(events.events), timer))
-        # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
-        return len(events.events)
-    
-    def insert_event(self, key, name, ts, data):
-        return self.insert_events(EventList(key, name, [Event(ts, data)]))
+        logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
+        # print("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
+        return len(event_list)
+
+    # def insert_events(self, events):
+    #     if self.connection_object.read_only:
+    #         raise RuntimeError("Cannot execute insert_events command in readonly mode")    
+
+    #     key = events.key
+    #     name = events.name
+    #     evs = events.events
+
+    #     assert 1 <= len(evs) < 100
+
+    #     timer = time.time()
+    #     with self.connection_pool.connection() as conn:
+    #         dt = self.table(conn)
+    #         with Batch(dt) as b:
+    #             for ev in evs:
+    #                 row_key = self.get_row_key(key, name, ev.ts)
+    #                 cn = "e:{}".format(ev.ts)
+    #                 data = {cn: json.dumps(ev.data).encode("utf-8")}
+    #                 b.put(row_key, data)
+
+    #     timer = time.time() - timer
+    #     logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(events.events), timer))
+    #     # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
+    #     return len(events.events)
+
+    def insert_event(self, key, name, dt, data):
+        return self.insert_events(EventList(key, name, [(dt, data)]))
 
     def get_events(self, key, name, from_ts, to_ts):
         assert from_ts <= to_ts
@@ -599,7 +623,7 @@ class EventStore(object):
             dt = self.table(conn)
             res = dt.rows(row_keys, columns)
 
-        events = []
+        events = EventList(key, name)
         for row_key, data_dict in res:
             for k, value in data_dict.items():
                 s = k.decode("utf-8").split(":")
@@ -607,31 +631,29 @@ class EventStore(object):
                     continue
                 m = s[0]
                 ts = int(s[1])
-                # check ts
-                if from_ts <= ts <= to_ts:
-                    events.append(Event(ts, json.loads(value.decode("utf-8"))))
+                events.insert_storage_item(ts, value)
 
-        out = EventList(key, name, sorted(events, key=lambda x: x.ts))
+        events.trim(from_ts, to_ts)
 
         timer = time.time() - timer
-        logger.info("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(out.events), timer))
-        # print("GET: {}.{}, {} points in {}".format(key, metrics, size, timer))
-        return out
+        logger.info("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        # print("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        return events
 
-    def get_last_event(self, key, name, count=1):
-        assert False
+    def get_last_event(self, key, name):
+        return self.get_last_events(key, name, count=1, max_days=365)
+
+    def get_last_events(self, key, name, count=1, max_days=365, max_ts=None):
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
 
-        start_search_row = self.get_row_key(key, max_ts).encode("utf-8")
-        row_prefix = "{}#".format(key).encode("utf-8")
-        metric_objects = [self.get_metric_object(m) for m in metrics]
-        columns = ["{}:".format(m.id) for m in metric_objects]
+        start_search_row = self.get_row_key(key, name, max_ts).encode("utf-8")
+        row_prefix = "{}#{}#".format(key, name).encode("utf-8")
+        columns = "e:"
 
         timer = time.time()
 
-        timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
-
+        events = EventList(key, name)
         # Start scanning
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
@@ -639,8 +661,9 @@ class EventStore(object):
             # res = dt.scan(row_prefix=row_prefix, limit=max_days, columns=columns)
             # with row start
             res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
+
             for row_key, data_dict in res:
-                # Break if we get another deviceid
+                # Break if we get another row prefix
                 if not row_key.startswith(row_prefix):
                     break
 
@@ -650,25 +673,18 @@ class EventStore(object):
                     if len(s) != 2:
                         continue
                     m = s[0]
-                    if m in timeseries.keys():
-                        ts = int(s[1])
-                        timeseries[m].insert_storage_item(ts, value)
+                    ts = int(s[1])
+                    events.insert_storage_item(ts, value)
 
-                if all([len(x) >= count for x in timeseries.values()]):
+                if len(events) >= count:
                     break
 
-        out = []
-        size = 0
-        for m in metric_objects:
-            t = timeseries[m.id]
-            t.trim_count_newest(count)
-            size += len(t)
-            out.append(t)
+        events.trim_count_newest(count)
 
         timer = time.time() - timer
-        logger.info("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
-        # print("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
-        return out
+        logger.info("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        # print("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        return events
 
     def delete_events(self, key, name, from_ts, to_ts):
         assert False

@@ -13,8 +13,9 @@ import bisect
 import logging
 import array
 import hashlib
+from enum import Enum
 
-from ..grpcserver.cdb_pb2 import FloatTimeSeries
+from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_hourly_left, ts_hourly_right
@@ -22,18 +23,25 @@ from .helper import ts_weekly_left, ts_weekly_right
 from .helper import ts_monthly_left, ts_monthly_right
 
 
-Aggregation = namedtuple('Aggregation', ['min', 'max', 'sum', 'count'])
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
-EventList = namedtuple('EventList', ['key', 'name', 'events'])
-Event = namedtuple('Event', ['ts', 'data'])
 
+
+class SeriesType(Enum):
+    FLOATSERIES = 1
+    DICTSERIES = 2
 
 class TimeSeries(object):
-    def __init__(self, key, metric, values=None, force_float=True):
+    DEFAULT_TYPE = SeriesType.FLOATSERIES
+    TYPE_WRAPPER = Point
+
+    def __init__(self, key, metric, values=None, series_type=None):
         self._timestamps = array.array("I")
         self._timestamp_offsets = array.array("i")
         self._values = list()
-        self.force_float = force_float
+        if series_type is None:
+            self.series_type = self.DEFAULT_TYPE
+        else:
+            self.series_type = series_type
         if values is not None:
             self.insert(values)
         self.key = key.lower()
@@ -42,8 +50,23 @@ class TimeSeries(object):
         assert len(self.metric) >= 2
 
     @classmethod
-    def from_proto(cls, p):
-        i = cls(p.key, p.metric, force_float=True)
+    def from_proto_bytes(cls, b, series_type=None):
+        if series_type is None:
+            series_type = cls.DEFAULT_TYPE
+        if series_type == SeriesType.FLOATSERIES:
+            f = FloatTimeSeries()
+        elif series_type == SeriesType.DICTSERIES:
+            f = DictTimeSeries()
+        else:
+            raise NotImplementedError("wrong series type")
+        f.ParseFromString(b)
+        return cls.from_proto(f, series_type=series_type)
+
+    @classmethod
+    def from_proto(cls, p, series_type=None):
+        if series_type is None:
+            series_type = cls.DEFAULT_TYPE
+        i = cls(p.key, p.metric, series_type=series_type)
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
         i._values = list(p.values)
@@ -92,7 +115,7 @@ class TimeSeries(object):
         assert self.ts_max < other.ts_min
         assert self.key == other.key
         assert self.metric == other.metric
-        assert self.force_float == other.force_float
+        assert self.series_type == other.series_type
 
         self._timestamps += other._timestamps
         self._timestamp_offsets += other._timestamp_offsets
@@ -128,13 +151,15 @@ class TimeSeries(object):
 
     def _at(self, i):
         dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
-        return Point(self._timestamps[i], self._values[i], dt)
+        return self.TYPE_WRAPPER(self._timestamps[i], self._values[i], dt)
 
     def _storage_item_at(self, i):
-        if self.force_float:
+        if self.series_type == SeriesType.FLOATSERIES:
             by = struct.pack("B", 1) + struct.pack("i", self._timestamp_offsets[i]) + struct.pack("f", self._values[i])
+        elif self.series_type == SeriesType.DICTSERIES:
+            by = struct.pack("B", 2) + struct.pack("i", self._timestamp_offsets[i]) + msgpack.packb(self._values[i], use_bin_type=True)
         else:
-            by = struct.pack("B", 2) + struct.pack("i", self._timestamp_offsets[i]) + msgpack.packb(self._values[i])
+            raise NotImplementedError("wrong series type")
         return (self._timestamps[i], by)
 
     def _serializable_at(self, i):
@@ -153,11 +178,13 @@ class TimeSeries(object):
     def insert_storage_item(self, timestamp, by, overwrite=False):
         f = int(struct.unpack("B", by[0:1])[0])
         offset = int(struct.unpack("i", by[1:5])[0])
-        if f == 1 or self.force_float:
-            self.force_float = True
+
+        if f == 1 and self.series_type == SeriesType.FLOATSERIES:
             value = float(struct.unpack("f", by[5:9])[0])
+        elif f == 2 and self.series_type == SeriesType.DICTSERIES:
+            value = msgpack.unpackb(by[5:], raw=False)
         else:
-            value = msgpack.unpackb(by[5:])
+            raise RuntimeError("Invalid series type or type miss match")
 
         idx = bisect.bisect_left(self._timestamps, timestamp)
         # Append
@@ -203,8 +230,11 @@ class TimeSeries(object):
 
         idx = bisect.bisect_left(self._timestamps, timestamp)
         # Force Float
-        if self.force_float:
+        if self.series_type == SeriesType.FLOATSERIES:
             value = float(value)
+        # Force Dict
+        if self.series_type == SeriesType.DICTSERIES:
+            value = dict(value)
         # Append
         if idx == len(self._timestamps):
             self._timestamps.append(timestamp)
@@ -290,15 +320,26 @@ class TimeSeries(object):
             i += j
 
     def to_proto(self):
-        if not self.force_float:
-            raise ValueError("cannot encode non-float timeseries to protobuf")
-        ts = FloatTimeSeries()
+        if self.series_type == SeriesType.FLOATSERIES:
+            ts = FloatTimeSeries()
+            ts.values[:] = self._values
+        elif self.series_type == SeriesType.DICTSERIES:
+            ts = DictTimeSeries()
+            proto_dicts = []
+            for v in self._values:
+                proto_dicts.append(SerializableDict(v).to_proto())
+            ts.values[:] = proto_dicts
+        else:
+            raise NotImplementedError("wrong series type")
         ts.metric = self.metric
         ts.key = self.key
-        ts.values[:] = self._values
         ts.timestamps[:] = self._timestamps
         ts.timestamp_offsets[:] = self._timestamp_offsets
         return ts
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()
 
     def to_serializable(self):
         i = 0
@@ -358,4 +399,47 @@ class TimeSeries(object):
             offset = t[0].dt.offset
             dt = pendulum.from_timestamp(ts, offset/3600.0)
             value = func([x.value for x in t])
-            yield Point(ts, value, dt)
+            yield self.TYPE_WRAPPER(ts, value, dt)
+
+
+class EventList(TimeSeries):
+    DEFAULT_TYPE = SeriesType.DICTSERIES
+
+    def __init__(self, key, name, events=None):
+        super(EventList, self).__init__(key=key, metric=name, values=events,
+                                        series_type=SeriesType.DICTSERIES)
+
+    @property
+    def name(self):
+        return self.metric
+
+
+class SerializableDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(SerializableDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+    @classmethod
+    def from_proto_bytes(cls, b):
+        d = Dictionary()
+        d.ParseFromString(b)
+        return cls.from_proto(d)
+
+    @classmethod
+    def from_proto(cls, p):
+        i = cls()
+        for pair in p.pairs:
+            i[pair.key] = pair.value
+        return i
+
+    def to_proto(self):
+        d = Dictionary()
+        pairs = []
+        for k, v in self.items():
+            pairs.append(Pair(key=str(k), value=str(v)))
+        d.pairs.extend(pairs)
+        return d
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()

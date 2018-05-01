@@ -10,7 +10,7 @@ import datetime
 
 
 from cattledb.storage import Connection
-from cattledb.storage.models import Event, EventList
+from cattledb.storage.models import EventList
 
 
 class EventStorageTest(unittest.TestCase):
@@ -37,8 +37,8 @@ class EventStorageTest(unittest.TestCase):
         db.events.insert_event("device1", "upload", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
         db.events.insert_event("device1", "upload", pendulum.datetime(2015, 2, 5, 18, 0, tz='UTC').int_timestamp, {"foo3": "bar3"})
         evs = EventList("device1", "upload", [
-            Event(pendulum.datetime(2015, 2, 5, 13, 0, tz='UTC').int_timestamp, {"foo2": "bar2"}),
-            Event(pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp, {"foo4": "bar4"})
+            (pendulum.datetime(2015, 2, 5, 13, 0, tz='UTC').int_timestamp, {"foo2": "bar2"}),
+            (pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp, {"foo4": "bar4"})
             ])
         db.events.insert_events(evs)
 
@@ -47,8 +47,15 @@ class EventStorageTest(unittest.TestCase):
 
         self.assertEqual(res.name, "upload")
         self.assertEqual(res.key, "device1")
-        self.assertEqual(len(res.events), 2)
-        self.assertEqual(res.events[0].ts, pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp)
-        self.assertEqual(res.events[0].data["foo1"], "bar1")
-        self.assertEqual(res.events[1].ts, pendulum.datetime(2015, 2, 5, 13, 0, tz='UTC').int_timestamp)
-        self.assertEqual(res.events[1].data["foo2"], "bar2")
+        self.assertEqual(len(res), 2)
+        self.assertEqual(res[0].ts, pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp)
+        self.assertEqual(res[0].value["foo1"], "bar1")
+        self.assertEqual(res[1].ts, pendulum.datetime(2015, 2, 5, 13, 0, tz='UTC').int_timestamp)
+        self.assertEqual(res[1].value["foo2"], "bar2")
+
+        res = db.events.get_last_event("device1", "upload")
+        self.assertEqual(res.name, "upload")
+        self.assertEqual(res.key, "device1")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].ts, pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp)
+        self.assertEqual(res[0].value["foo4"], "bar4")
