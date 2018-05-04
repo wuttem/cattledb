@@ -59,3 +59,12 @@ class EventStorageTest(unittest.TestCase):
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].ts, pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp)
         self.assertEqual(res[0].value["foo4"], "bar4")
+
+        res = db.events.delete_event_days("device1", "upload", pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp, pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp)
+
+        res = db.events.get_last_event("device1", "upload")
+        self.assertEqual(res.name, "upload")
+        self.assertEqual(res.key, "device1")
+        self.assertEqual(len(res), 1)
+        self.assertEqual(res[0].ts, pendulum.datetime(2015, 2, 5, 18, 0, tz='UTC').int_timestamp)
+        self.assertEqual(res[0].value["foo3"], "bar3")

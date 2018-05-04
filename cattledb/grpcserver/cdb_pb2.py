@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='cdb.proto',
   package='',
   syntax='proto3',
-  serialized_pb=_b('\n\tcdb.proto\"\\\n\x11TimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"b\n\x16MultiTimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\";\n\tPutResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\"*\n\tFloatItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x02\")\n\x08\x42lobItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x0c\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\"\n\nDictionary\x12\x14\n\x05pairs\x18\x01 \x03(\x0b\x32\x05.Pair\"y\n\x0e\x44ictTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"m\n\x0f\x46loatTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x0e\n\x06values\x18\x04 \x03(\x02\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"5\n\x13\x46loatTimeSeriesList\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.FloatTimeSeries2\xbf\x02\n\nTimeSeries\x12\x32\n\x08getFloat\x12\x12.TimeSeriesRequest\x1a\x10.FloatTimeSeries\"\x00\x12@\n\rgetMultiFloat\x12\x17.MultiTimeSeriesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12\x30\n\x07getDict\x12\x12.TimeSeriesRequest\x1a\x0f.DictTimeSeries\"\x00\x12*\n\x08putFloat\x12\x10.FloatTimeSeries\x1a\n.PutResult\"\x00\x12\x33\n\rputMultiFloat\x12\x14.FloatTimeSeriesList\x1a\n.PutResult\"\x00\x12(\n\x07putDict\x12\x0f.DictTimeSeries\x1a\n.PutResult\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\tcdb.proto\"\\\n\x11TimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"b\n\x16MultiTimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"b\n\x11LastValuesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\x12\x10\n\x08max_days\x18\x03 \x01(\x05\x12\x0e\n\x06max_ts\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"V\n\rEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"_\n\x11LastEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\r\n\x05\x63ount\x18\x03 \x01(\x05\x12\x10\n\x08max_days\x18\x04 \x01(\x05\x12\x0e\n\x06max_ts\x18\x05 \x01(\t\"v\n\x18IncrementActivityRequest\x12\x11\n\treader_id\x18\x01 \x01(\t\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\x12\r\n\x05value\x18\x04 \x01(\x05\x12\x12\n\nparent_ids\x18\x05 \x03(\t\"&\n\x14TotalActivityRequest\x12\x0e\n\x06\x64\x61y_ts\x18\x01 \x01(\x03\"7\n\x12\x41\x63tivityDayRequest\x12\x11\n\tparent_id\x18\x02 \x01(\t\x12\x0e\n\x06\x64\x61y_ts\x18\x01 \x01(\x03\"V\n\x15ReaderActivityRequest\x12\x11\n\tparent_id\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x02 \x01(\t\x12\x13\n\x0bto_datetime\x18\x03 \x01(\t\"7\n\x10\x41\x63tivityResponse\x12#\n\nactivities\x18\x01 \x03(\x0b\x32\x0f.ReaderActivity\"I\n\x0eReaderActivity\x12\x10\n\x08\x64\x61y_hour\x18\x01 \x01(\t\x12\x11\n\treader_id\x18\x02 \x01(\t\x12\x12\n\ndevice_ids\x18\x04 \x03(\t\"2\n\x0fMetaDataRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x12\n\nnamespaces\x18\x03 \x03(\t\"<\n\x10MetaDataResponse\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"8\n\x0cMetaDataPost\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"7\n\x0cMetaDataDict\x12\x11\n\tnamespace\x18\x01 \x01(\t\x12\x14\n\x05pairs\x18\x02 \x03(\x0b\x32\x05.Pair\";\n\tPutResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\">\n\x0c\x44\x65leteResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\"*\n\tFloatItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x02\")\n\x08\x42lobItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x0c\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\"\n\nDictionary\x12\x14\n\x05pairs\x18\x01 \x03(\x0b\x32\x05.Pair\"y\n\x0e\x44ictTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"m\n\x0f\x46loatTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x0e\n\x06values\x18\x04 \x03(\x02\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"5\n\x13\x46loatTimeSeriesList\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.FloatTimeSeries2\xbd\x02\n\nTimeSeries\x12-\n\x03get\x12\x12.TimeSeriesRequest\x1a\x10.FloatTimeSeries\"\x00\x12;\n\x08getMulti\x12\x17.MultiTimeSeriesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12\x38\n\nlastValues\x12\x12.LastValuesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12%\n\x03put\x12\x10.FloatTimeSeries\x1a\n.PutResult\"\x00\x12.\n\x08putMulti\x12\x14.FloatTimeSeriesList\x1a\n.PutResult\"\x00\x12\x32\n\x06\x64\x65lete\x12\x17.MultiTimeSeriesRequest\x1a\r.DeleteResult\"\x00\x32\xb8\x01\n\x06\x45vents\x12(\n\x03get\x12\x0e.EventsRequest\x1a\x0f.DictTimeSeries\"\x00\x12\x33\n\nlastEvents\x12\x12.LastEventsRequest\x1a\x0f.DictTimeSeries\"\x00\x12$\n\x03put\x12\x0f.DictTimeSeries\x1a\n.PutResult\"\x00\x12)\n\x06\x64\x65lete\x12\x0e.EventsRequest\x1a\r.DeleteResult\"\x00\x32\xe6\x01\n\x08\x41\x63tivity\x12\x36\n\x08getTotal\x12\x15.TotalActivityRequest\x1a\x11.ActivityResponse\"\x00\x12\x32\n\x06getDay\x12\x13.ActivityDayRequest\x1a\x11.ActivityResponse\"\x00\x12\x38\n\tgetReader\x12\x16.ReaderActivityRequest\x1a\x11.ActivityResponse\"\x00\x12\x34\n\tincrement\x12\x19.IncrementActivityRequest\x1a\n.PutResult\"\x00\x32\\\n\x08MetaData\x12,\n\x03get\x12\x10.MetaDataRequest\x1a\x11.MetaDataResponse\"\x00\x12\"\n\x03put\x12\r.MetaDataPost\x1a\n.PutResult\"\x00\x62\x06proto3')
 )
 
 
@@ -129,6 +129,577 @@ _MULTITIMESERIESREQUEST = _descriptor.Descriptor(
 )
 
 
+_LASTVALUESREQUEST = _descriptor.Descriptor(
+  name='LastValuesRequest',
+  full_name='LastValuesRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='LastValuesRequest.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='count', full_name='LastValuesRequest.count', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_days', full_name='LastValuesRequest.max_days', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_ts', full_name='LastValuesRequest.max_ts', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='metrics', full_name='LastValuesRequest.metrics', index=4,
+      number=6, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=207,
+  serialized_end=305,
+)
+
+
+_EVENTSREQUEST = _descriptor.Descriptor(
+  name='EventsRequest',
+  full_name='EventsRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='EventsRequest.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='EventsRequest.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='from_datetime', full_name='EventsRequest.from_datetime', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='to_datetime', full_name='EventsRequest.to_datetime', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=307,
+  serialized_end=393,
+)
+
+
+_LASTEVENTSREQUEST = _descriptor.Descriptor(
+  name='LastEventsRequest',
+  full_name='LastEventsRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='LastEventsRequest.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='name', full_name='LastEventsRequest.name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='count', full_name='LastEventsRequest.count', index=2,
+      number=3, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_days', full_name='LastEventsRequest.max_days', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='max_ts', full_name='LastEventsRequest.max_ts', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=395,
+  serialized_end=490,
+)
+
+
+_INCREMENTACTIVITYREQUEST = _descriptor.Descriptor(
+  name='IncrementActivityRequest',
+  full_name='IncrementActivityRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='reader_id', full_name='IncrementActivityRequest.reader_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='device_id', full_name='IncrementActivityRequest.device_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='timestamp', full_name='IncrementActivityRequest.timestamp', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='IncrementActivityRequest.value', index=3,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='parent_ids', full_name='IncrementActivityRequest.parent_ids', index=4,
+      number=5, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=492,
+  serialized_end=610,
+)
+
+
+_TOTALACTIVITYREQUEST = _descriptor.Descriptor(
+  name='TotalActivityRequest',
+  full_name='TotalActivityRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='day_ts', full_name='TotalActivityRequest.day_ts', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=612,
+  serialized_end=650,
+)
+
+
+_ACTIVITYDAYREQUEST = _descriptor.Descriptor(
+  name='ActivityDayRequest',
+  full_name='ActivityDayRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='parent_id', full_name='ActivityDayRequest.parent_id', index=0,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='day_ts', full_name='ActivityDayRequest.day_ts', index=1,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=652,
+  serialized_end=707,
+)
+
+
+_READERACTIVITYREQUEST = _descriptor.Descriptor(
+  name='ReaderActivityRequest',
+  full_name='ReaderActivityRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='parent_id', full_name='ReaderActivityRequest.parent_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='from_datetime', full_name='ReaderActivityRequest.from_datetime', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='to_datetime', full_name='ReaderActivityRequest.to_datetime', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=709,
+  serialized_end=795,
+)
+
+
+_ACTIVITYRESPONSE = _descriptor.Descriptor(
+  name='ActivityResponse',
+  full_name='ActivityResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='activities', full_name='ActivityResponse.activities', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=797,
+  serialized_end=852,
+)
+
+
+_READERACTIVITY = _descriptor.Descriptor(
+  name='ReaderActivity',
+  full_name='ReaderActivity',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='day_hour', full_name='ReaderActivity.day_hour', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='reader_id', full_name='ReaderActivity.reader_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='device_ids', full_name='ReaderActivity.device_ids', index=2,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=854,
+  serialized_end=927,
+)
+
+
+_METADATAREQUEST = _descriptor.Descriptor(
+  name='MetaDataRequest',
+  full_name='MetaDataRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='MetaDataRequest.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='namespaces', full_name='MetaDataRequest.namespaces', index=1,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=929,
+  serialized_end=979,
+)
+
+
+_METADATARESPONSE = _descriptor.Descriptor(
+  name='MetaDataResponse',
+  full_name='MetaDataResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='MetaDataResponse.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='MetaDataResponse.data', index=1,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=981,
+  serialized_end=1041,
+)
+
+
+_METADATAPOST = _descriptor.Descriptor(
+  name='MetaDataPost',
+  full_name='MetaDataPost',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='MetaDataPost.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='MetaDataPost.data', index=1,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1043,
+  serialized_end=1099,
+)
+
+
+_METADATADICT = _descriptor.Descriptor(
+  name='MetaDataDict',
+  full_name='MetaDataDict',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='namespace', full_name='MetaDataDict.namespace', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='pairs', full_name='MetaDataDict.pairs', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1101,
+  serialized_end=1156,
+)
+
+
 _PUTRESULT = _descriptor.Descriptor(
   name='PutResult',
   full_name='PutResult',
@@ -169,8 +740,53 @@ _PUTRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=207,
-  serialized_end=266,
+  serialized_start=1158,
+  serialized_end=1217,
+)
+
+
+_DELETERESULT = _descriptor.Descriptor(
+  name='DeleteResult',
+  full_name='DeleteResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='code', full_name='DeleteResult.code', index=0,
+      number=1, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='counter', full_name='DeleteResult.counter', index=1,
+      number=2, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='DeleteResult.message', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1219,
+  serialized_end=1281,
 )
 
 
@@ -207,8 +823,8 @@ _FLOATITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=268,
-  serialized_end=310,
+  serialized_start=1283,
+  serialized_end=1325,
 )
 
 
@@ -245,8 +861,8 @@ _BLOBITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=312,
-  serialized_end=353,
+  serialized_start=1327,
+  serialized_end=1368,
 )
 
 
@@ -283,8 +899,8 @@ _PAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=355,
-  serialized_end=389,
+  serialized_start=1370,
+  serialized_end=1404,
 )
 
 
@@ -314,8 +930,8 @@ _DICTIONARY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=391,
-  serialized_end=425,
+  serialized_start=1406,
+  serialized_end=1440,
 )
 
 
@@ -373,8 +989,8 @@ _DICTTIMESERIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=427,
-  serialized_end=548,
+  serialized_start=1442,
+  serialized_end=1563,
 )
 
 
@@ -432,8 +1048,8 @@ _FLOATTIMESERIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=550,
-  serialized_end=659,
+  serialized_start=1565,
+  serialized_end=1674,
 )
 
 
@@ -463,16 +1079,34 @@ _FLOATTIMESERIESLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=661,
-  serialized_end=714,
+  serialized_start=1676,
+  serialized_end=1729,
 )
 
+_ACTIVITYRESPONSE.fields_by_name['activities'].message_type = _READERACTIVITY
+_METADATARESPONSE.fields_by_name['data'].message_type = _METADATADICT
+_METADATAPOST.fields_by_name['data'].message_type = _METADATADICT
+_METADATADICT.fields_by_name['pairs'].message_type = _PAIR
 _DICTIONARY.fields_by_name['pairs'].message_type = _PAIR
 _DICTTIMESERIES.fields_by_name['values'].message_type = _DICTIONARY
 _FLOATTIMESERIESLIST.fields_by_name['data'].message_type = _FLOATTIMESERIES
 DESCRIPTOR.message_types_by_name['TimeSeriesRequest'] = _TIMESERIESREQUEST
 DESCRIPTOR.message_types_by_name['MultiTimeSeriesRequest'] = _MULTITIMESERIESREQUEST
+DESCRIPTOR.message_types_by_name['LastValuesRequest'] = _LASTVALUESREQUEST
+DESCRIPTOR.message_types_by_name['EventsRequest'] = _EVENTSREQUEST
+DESCRIPTOR.message_types_by_name['LastEventsRequest'] = _LASTEVENTSREQUEST
+DESCRIPTOR.message_types_by_name['IncrementActivityRequest'] = _INCREMENTACTIVITYREQUEST
+DESCRIPTOR.message_types_by_name['TotalActivityRequest'] = _TOTALACTIVITYREQUEST
+DESCRIPTOR.message_types_by_name['ActivityDayRequest'] = _ACTIVITYDAYREQUEST
+DESCRIPTOR.message_types_by_name['ReaderActivityRequest'] = _READERACTIVITYREQUEST
+DESCRIPTOR.message_types_by_name['ActivityResponse'] = _ACTIVITYRESPONSE
+DESCRIPTOR.message_types_by_name['ReaderActivity'] = _READERACTIVITY
+DESCRIPTOR.message_types_by_name['MetaDataRequest'] = _METADATAREQUEST
+DESCRIPTOR.message_types_by_name['MetaDataResponse'] = _METADATARESPONSE
+DESCRIPTOR.message_types_by_name['MetaDataPost'] = _METADATAPOST
+DESCRIPTOR.message_types_by_name['MetaDataDict'] = _METADATADICT
 DESCRIPTOR.message_types_by_name['PutResult'] = _PUTRESULT
+DESCRIPTOR.message_types_by_name['DeleteResult'] = _DELETERESULT
 DESCRIPTOR.message_types_by_name['FloatItem'] = _FLOATITEM
 DESCRIPTOR.message_types_by_name['BlobItem'] = _BLOBITEM
 DESCRIPTOR.message_types_by_name['Pair'] = _PAIR
@@ -496,12 +1130,110 @@ MultiTimeSeriesRequest = _reflection.GeneratedProtocolMessageType('MultiTimeSeri
   ))
 _sym_db.RegisterMessage(MultiTimeSeriesRequest)
 
+LastValuesRequest = _reflection.GeneratedProtocolMessageType('LastValuesRequest', (_message.Message,), dict(
+  DESCRIPTOR = _LASTVALUESREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:LastValuesRequest)
+  ))
+_sym_db.RegisterMessage(LastValuesRequest)
+
+EventsRequest = _reflection.GeneratedProtocolMessageType('EventsRequest', (_message.Message,), dict(
+  DESCRIPTOR = _EVENTSREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:EventsRequest)
+  ))
+_sym_db.RegisterMessage(EventsRequest)
+
+LastEventsRequest = _reflection.GeneratedProtocolMessageType('LastEventsRequest', (_message.Message,), dict(
+  DESCRIPTOR = _LASTEVENTSREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:LastEventsRequest)
+  ))
+_sym_db.RegisterMessage(LastEventsRequest)
+
+IncrementActivityRequest = _reflection.GeneratedProtocolMessageType('IncrementActivityRequest', (_message.Message,), dict(
+  DESCRIPTOR = _INCREMENTACTIVITYREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:IncrementActivityRequest)
+  ))
+_sym_db.RegisterMessage(IncrementActivityRequest)
+
+TotalActivityRequest = _reflection.GeneratedProtocolMessageType('TotalActivityRequest', (_message.Message,), dict(
+  DESCRIPTOR = _TOTALACTIVITYREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:TotalActivityRequest)
+  ))
+_sym_db.RegisterMessage(TotalActivityRequest)
+
+ActivityDayRequest = _reflection.GeneratedProtocolMessageType('ActivityDayRequest', (_message.Message,), dict(
+  DESCRIPTOR = _ACTIVITYDAYREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:ActivityDayRequest)
+  ))
+_sym_db.RegisterMessage(ActivityDayRequest)
+
+ReaderActivityRequest = _reflection.GeneratedProtocolMessageType('ReaderActivityRequest', (_message.Message,), dict(
+  DESCRIPTOR = _READERACTIVITYREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:ReaderActivityRequest)
+  ))
+_sym_db.RegisterMessage(ReaderActivityRequest)
+
+ActivityResponse = _reflection.GeneratedProtocolMessageType('ActivityResponse', (_message.Message,), dict(
+  DESCRIPTOR = _ACTIVITYRESPONSE,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:ActivityResponse)
+  ))
+_sym_db.RegisterMessage(ActivityResponse)
+
+ReaderActivity = _reflection.GeneratedProtocolMessageType('ReaderActivity', (_message.Message,), dict(
+  DESCRIPTOR = _READERACTIVITY,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:ReaderActivity)
+  ))
+_sym_db.RegisterMessage(ReaderActivity)
+
+MetaDataRequest = _reflection.GeneratedProtocolMessageType('MetaDataRequest', (_message.Message,), dict(
+  DESCRIPTOR = _METADATAREQUEST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:MetaDataRequest)
+  ))
+_sym_db.RegisterMessage(MetaDataRequest)
+
+MetaDataResponse = _reflection.GeneratedProtocolMessageType('MetaDataResponse', (_message.Message,), dict(
+  DESCRIPTOR = _METADATARESPONSE,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:MetaDataResponse)
+  ))
+_sym_db.RegisterMessage(MetaDataResponse)
+
+MetaDataPost = _reflection.GeneratedProtocolMessageType('MetaDataPost', (_message.Message,), dict(
+  DESCRIPTOR = _METADATAPOST,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:MetaDataPost)
+  ))
+_sym_db.RegisterMessage(MetaDataPost)
+
+MetaDataDict = _reflection.GeneratedProtocolMessageType('MetaDataDict', (_message.Message,), dict(
+  DESCRIPTOR = _METADATADICT,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:MetaDataDict)
+  ))
+_sym_db.RegisterMessage(MetaDataDict)
+
 PutResult = _reflection.GeneratedProtocolMessageType('PutResult', (_message.Message,), dict(
   DESCRIPTOR = _PUTRESULT,
   __module__ = 'cdb_pb2'
   # @@protoc_insertion_point(class_scope:PutResult)
   ))
 _sym_db.RegisterMessage(PutResult)
+
+DeleteResult = _reflection.GeneratedProtocolMessageType('DeleteResult', (_message.Message,), dict(
+  DESCRIPTOR = _DELETERESULT,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:DeleteResult)
+  ))
+_sym_db.RegisterMessage(DeleteResult)
 
 FloatItem = _reflection.GeneratedProtocolMessageType('FloatItem', (_message.Message,), dict(
   DESCRIPTOR = _FLOATITEM,
@@ -560,12 +1292,12 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=717,
-  serialized_end=1036,
+  serialized_start=1732,
+  serialized_end=2049,
   methods=[
   _descriptor.MethodDescriptor(
-    name='getFloat',
-    full_name='TimeSeries.getFloat',
+    name='get',
+    full_name='TimeSeries.get',
     index=0,
     containing_service=None,
     input_type=_TIMESERIESREQUEST,
@@ -573,8 +1305,8 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
-    name='getMultiFloat',
-    full_name='TimeSeries.getMultiFloat',
+    name='getMulti',
+    full_name='TimeSeries.getMulti',
     index=1,
     containing_service=None,
     input_type=_MULTITIMESERIESREQUEST,
@@ -582,17 +1314,17 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
-    name='getDict',
-    full_name='TimeSeries.getDict',
+    name='lastValues',
+    full_name='TimeSeries.lastValues',
     index=2,
     containing_service=None,
-    input_type=_TIMESERIESREQUEST,
-    output_type=_DICTTIMESERIES,
+    input_type=_LASTVALUESREQUEST,
+    output_type=_FLOATTIMESERIESLIST,
     options=None,
   ),
   _descriptor.MethodDescriptor(
-    name='putFloat',
-    full_name='TimeSeries.putFloat',
+    name='put',
+    full_name='TimeSeries.put',
     index=3,
     containing_service=None,
     input_type=_FLOATTIMESERIES,
@@ -600,8 +1332,8 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
-    name='putMultiFloat',
-    full_name='TimeSeries.putMultiFloat',
+    name='putMulti',
+    full_name='TimeSeries.putMulti',
     index=4,
     containing_service=None,
     input_type=_FLOATTIMESERIESLIST,
@@ -609,17 +1341,152 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
     options=None,
   ),
   _descriptor.MethodDescriptor(
-    name='putDict',
-    full_name='TimeSeries.putDict',
+    name='delete',
+    full_name='TimeSeries.delete',
     index=5,
     containing_service=None,
-    input_type=_DICTTIMESERIES,
-    output_type=_PUTRESULT,
+    input_type=_MULTITIMESERIESREQUEST,
+    output_type=_DELETERESULT,
     options=None,
   ),
 ])
 _sym_db.RegisterServiceDescriptor(_TIMESERIES)
 
 DESCRIPTOR.services_by_name['TimeSeries'] = _TIMESERIES
+
+
+_EVENTS = _descriptor.ServiceDescriptor(
+  name='Events',
+  full_name='Events',
+  file=DESCRIPTOR,
+  index=1,
+  options=None,
+  serialized_start=2052,
+  serialized_end=2236,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='get',
+    full_name='Events.get',
+    index=0,
+    containing_service=None,
+    input_type=_EVENTSREQUEST,
+    output_type=_DICTTIMESERIES,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='lastEvents',
+    full_name='Events.lastEvents',
+    index=1,
+    containing_service=None,
+    input_type=_LASTEVENTSREQUEST,
+    output_type=_DICTTIMESERIES,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='put',
+    full_name='Events.put',
+    index=2,
+    containing_service=None,
+    input_type=_DICTTIMESERIES,
+    output_type=_PUTRESULT,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='delete',
+    full_name='Events.delete',
+    index=3,
+    containing_service=None,
+    input_type=_EVENTSREQUEST,
+    output_type=_DELETERESULT,
+    options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_EVENTS)
+
+DESCRIPTOR.services_by_name['Events'] = _EVENTS
+
+
+_ACTIVITY = _descriptor.ServiceDescriptor(
+  name='Activity',
+  full_name='Activity',
+  file=DESCRIPTOR,
+  index=2,
+  options=None,
+  serialized_start=2239,
+  serialized_end=2469,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='getTotal',
+    full_name='Activity.getTotal',
+    index=0,
+    containing_service=None,
+    input_type=_TOTALACTIVITYREQUEST,
+    output_type=_ACTIVITYRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='getDay',
+    full_name='Activity.getDay',
+    index=1,
+    containing_service=None,
+    input_type=_ACTIVITYDAYREQUEST,
+    output_type=_ACTIVITYRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='getReader',
+    full_name='Activity.getReader',
+    index=2,
+    containing_service=None,
+    input_type=_READERACTIVITYREQUEST,
+    output_type=_ACTIVITYRESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='increment',
+    full_name='Activity.increment',
+    index=3,
+    containing_service=None,
+    input_type=_INCREMENTACTIVITYREQUEST,
+    output_type=_PUTRESULT,
+    options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_ACTIVITY)
+
+DESCRIPTOR.services_by_name['Activity'] = _ACTIVITY
+
+
+_METADATA = _descriptor.ServiceDescriptor(
+  name='MetaData',
+  full_name='MetaData',
+  file=DESCRIPTOR,
+  index=3,
+  options=None,
+  serialized_start=2471,
+  serialized_end=2563,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='get',
+    full_name='MetaData.get',
+    index=0,
+    containing_service=None,
+    input_type=_METADATAREQUEST,
+    output_type=_METADATARESPONSE,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='put',
+    full_name='MetaData.put',
+    index=1,
+    containing_service=None,
+    input_type=_METADATAPOST,
+    output_type=_PUTRESULT,
+    options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_METADATA)
+
+DESCRIPTOR.services_by_name['MetaData'] = _METADATA
 
 # @@protoc_insertion_point(module_scope)

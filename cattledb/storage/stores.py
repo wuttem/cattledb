@@ -199,7 +199,6 @@ class ActivityStore(object):
         daily_ts =  daily_timestamps(from_ts, to_ts)
         row_keys = [self.get_row_key("t", ts, reader_id=reader_id).encode("utf-8") for ts in daily_ts]
         columns = "c:"
-        print(row_keys)
 
         timer = time.time()
 
@@ -398,7 +397,6 @@ class TimeSeriesStore(object):
 
         row_keys = [self.get_row_key(key, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
         columns = ["{}:".format(m.id) for m in metric_objects]
-        print(row_keys)
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
         with self.connection_pool.connection() as conn:
@@ -500,8 +498,6 @@ class TimeSeriesStore(object):
                 raise RuntimeError("Delete not possible on metric {}".format(m.name))
             columns.append("{}:".format(m.id))
 
-        print(row_keys)
-
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             with Batch(dt) as b:
@@ -582,31 +578,6 @@ class EventStore(object):
         # print("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
         return len(event_list)
 
-    # def insert_events(self, events):
-    #     if self.connection_object.read_only:
-    #         raise RuntimeError("Cannot execute insert_events command in readonly mode")    
-
-    #     key = events.key
-    #     name = events.name
-    #     evs = events.events
-
-    #     assert 1 <= len(evs) < 100
-
-    #     timer = time.time()
-    #     with self.connection_pool.connection() as conn:
-    #         dt = self.table(conn)
-    #         with Batch(dt) as b:
-    #             for ev in evs:
-    #                 row_key = self.get_row_key(key, name, ev.ts)
-    #                 cn = "e:{}".format(ev.ts)
-    #                 data = {cn: json.dumps(ev.data).encode("utf-8")}
-    #                 b.put(row_key, data)
-
-    #     timer = time.time() - timer
-    #     logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(events.events), timer))
-    #     # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
-    #     return len(events.events)
-
     def insert_event(self, key, name, dt, data):
         return self.insert_events(EventList(key, name, [(dt, data)]))
 
@@ -617,7 +588,6 @@ class EventStore(object):
 
         row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
         columns = "e:"
-        print(row_keys)
 
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
@@ -686,35 +656,24 @@ class EventStore(object):
         # print("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         return events
 
-    def delete_events(self, key, name, from_ts, to_ts):
-        assert False
+    def delete_event_days(self, key, name, from_ts, to_ts):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute delete command in readonly mode")
+            raise RuntimeError("Cannot execute delete_event_days command in readonly mode")
 
         assert from_ts <= to_ts
-        assert len(metrics) > 0
-        assert len(metrics[0]) > 1
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        metric_objects = [self.get_metric_object(m) for m in metrics]
-        # Check for delete flag
-        columns = []
-        for m in metric_objects:
-            if not m.delete_possible:
-                raise RuntimeError("Delete not possible on metric {}".format(m.name))
-            columns.append("{}:".format(m.id))
-
+        row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
         print(row_keys)
 
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             with Batch(dt) as b:
                 for row_key in row_keys:
-                    b.delete(row_key, columns=columns)
+                    b.delete(row_key)
 
         timer = time.time() - timer
         count = len(row_keys)
-        logger.info("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
-        # print("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
+        logger.info("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
+        # print("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
         return count

@@ -1,19 +1,19 @@
 syntax = "proto3";
 
 service TimeSeries {
-  // pull
-  rpc getFloat (TimeSeriesRequest) returns (FloatTimeSeries) {}
-  rpc getMultiFloat (MultiTimeSeriesRequest) returns (FloatTimeSeriesList) {}
-  rpc getDict (TimeSeriesRequest) returns (DictTimeSeries) {}
+    // pull
+    rpc get (TimeSeriesRequest) returns (FloatTimeSeries) {}
+    rpc getMulti (MultiTimeSeriesRequest) returns (FloatTimeSeriesList) {}
+    rpc lastValues (LastValuesRequest) returns (FloatTimeSeriesList) {}
 
-  // push
-  rpc putFloat (FloatTimeSeries) returns (PutResult) {}
-  rpc putMultiFloat (FloatTimeSeriesList) returns (PutResult) {}
-  rpc putDict (DictTimeSeries) returns (PutResult) {}
+    // push
+    rpc put (FloatTimeSeries) returns (PutResult) {}
+    rpc putMulti (FloatTimeSeriesList) returns (PutResult) {}
 
-  rpc deleteFloat (MultiTimeSeriesRequest) returns (DeleteResult) {}
-  rpc deleteDict (TimeSeriesRequest) returns (DeleteResult) {}
+    // delete
+    rpc delete (MultiTimeSeriesRequest) returns (DeleteResult) {}
 }
+
 
 message TimeSeriesRequest {
     string key = 1;
@@ -22,6 +22,7 @@ message TimeSeriesRequest {
     string to_datetime = 4;
 }
 
+
 message MultiTimeSeriesRequest {
     string key = 1;
     string from_datetime = 3;
@@ -29,11 +30,138 @@ message MultiTimeSeriesRequest {
     repeated string metrics = 6;
 }
 
+
+message LastValuesRequest {
+    string key = 1;
+    int32 count = 2;
+    int32 max_days = 3;
+    string max_ts = 4;
+    repeated string metrics = 6;
+}
+
+
+service Events {
+    // pull
+    rpc get (EventsRequest) returns (DictTimeSeries) {}
+    rpc lastEvents(LastEventsRequest) returns (DictTimeSeries) {}
+
+    // push
+    rpc put (DictTimeSeries) returns (PutResult) {}
+
+    // delete
+    rpc delete (EventsRequest) returns (DeleteResult) {}
+}
+
+
+message EventsRequest {
+    string key = 1;
+    string name = 2;
+    string from_datetime = 3;
+    string to_datetime = 4;
+}
+
+
+message LastEventsRequest {
+    string key = 1;
+    string name = 2;
+    int32 count = 3;
+    int32 max_days = 4;
+    string max_ts = 5;
+}
+
+// def incr_activity(self, reader_id, device_id, timestamp, parent_ids=None, value=1):
+// def get_total_activity_for_day(self, day_ts):
+// def get_activity_for_reader(self, reader_id, from_ts, to_ts):
+// def get_activity_for_day(self, parent_id, day_ts):
+
+service Activity {
+    // pull
+    rpc getTotal(TotalActivityRequest) returns (ActivityResponse) {}
+    rpc getDay(ActivityDayRequest) returns (ActivityResponse) {}
+    rpc getReader(ReaderActivityRequest) returns (ActivityResponse) {}
+  
+    // push
+    rpc increment(IncrementActivityRequest) returns (PutResult) {}
+}
+
+
+message IncrementActivityRequest {
+    string reader_id = 1;
+    string device_id = 2;
+    int64 timestamp = 3;
+    int32 value = 4;
+    repeated string parent_ids = 5;
+}
+
+
+message TotalActivityRequest {
+    int64 day_ts = 1;
+}
+
+
+message ActivityDayRequest {
+    string parent_id = 2;
+    int64 day_ts = 1;
+}
+
+
+message ReaderActivityRequest {
+    string parent_id = 1;
+    string from_datetime = 2;
+    string to_datetime = 3;
+}
+
+
+message ActivityResponse {
+    repeated ReaderActivity activities = 1;
+}
+
+message ReaderActivity {
+    string day_hour = 1;
+    string reader_id = 2;
+    repeated string device_ids = 4;
+}
+
+
+service MetaData {
+    // pull
+    rpc get (MetaDataRequest) returns (MetaDataResponse) {}
+  
+    // push
+    rpc put (MetaDataPost) returns (PutResult) {}
+}
+
+
+message MetaDataRequest {
+    string key = 1;
+    repeated string namespaces = 3;
+}
+
+
+message MetaDataResponse {
+    string key = 1;
+    repeated MetaDataDict data = 3;
+}
+
+
+message MetaDataPost {
+    string key = 1;
+    repeated MetaDataDict data = 3;
+}
+
+
+message MetaDataDict {
+    string namespace = 1;
+    repeated Pair pairs = 2;
+}
+
+
 message PutResult {
     int32 code = 1;
     int64 counter = 2;
     string message = 3;
 }
+
 
 message DeleteResult {
     int32 code = 1;
@@ -41,24 +169,29 @@ message DeleteResult {
     string message = 3;
 }
 
+
 message FloatItem {
     sint32 offset = 1;
     float value = 2;
 }
+
 
 message BlobItem {
     sint32 offset = 1;
     bytes value = 2;
 }
 
+
 message Pair {
    string key = 1;
    string value = 2;
 }
 
+
 message Dictionary {
    repeated Pair pairs = 1;
 }
+
 
 message DictTimeSeries {
     string key = 1;
@@ -68,6 +201,7 @@ message DictTimeSeries {
     repeated sint32 timestamp_offsets = 5;
 }
 
+
 message FloatTimeSeries {
     string key = 1;
     string metric = 2;
@@ -75,6 +209,7 @@ message FloatTimeSeries {
     repeated float values = 4;
     repeated sint32 timestamp_offsets = 5;
 }
+
 
 message FloatTimeSeriesList {
     repeated FloatTimeSeries data = 1;
