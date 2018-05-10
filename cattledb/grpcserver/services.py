@@ -13,7 +13,7 @@ class TimeSeriesServicer(TimeSeriesServicer):
                              pool_size=pool_size, table_prefix=table_prefix, credentials=credentials)
 
 
-    def getFloat(self, request, context):
+    def get(self, request, context):
         # request: TimeSeriesRequest
         # return: FloatTimeSeries
 
@@ -36,7 +36,7 @@ class TimeSeriesServicer(TimeSeriesServicer):
         ts = self.db.timeseries.get_single_timeseries(request.key, request.metric, from_ts, to_ts)
         return ts.to_proto()
 
-    def getMultiFloat(self, request, context):
+    def getMulti(self, request, context):
         # request: MultiTimeSeriesRequest
         # return: FloatTimeSeriesList
 
@@ -61,11 +61,6 @@ class TimeSeriesServicer(TimeSeriesServicer):
         l.data.extend([r.to_proto() for r in ts_list])
         return l
 
-    def getDict(self, request, context):
-        # request: TimeSeriesRequest
-        # return: DictTimeSeries
-        pass
-
     def putFloat(self, request, context):
         # request: FloatTimeSeries
         # return: PutResult
@@ -85,12 +80,7 @@ class TimeSeriesServicer(TimeSeriesServicer):
         res = self.db.timeseries.insert_timeseries(ts)
         return PutResult(code=200, counter=int(res), message="success")
 
-    def putMultiFloat(self, request, context):
+    def putMulti(self, request, context):
         # request: FloatTimeSeriesList
-        # return: PutResult
-        pass
-
-    def putDict(self, request, context):
-        # request: DictTimeSeries
         # return: PutResult
         pass

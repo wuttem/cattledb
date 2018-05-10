@@ -15,7 +15,7 @@ from google.cloud import happybase
 from google.cloud.happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps
-from .models import TimeSeries, EventList
+from .models import TimeSeries, EventList, MetaDataItem, SerializableDict
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
 
@@ -24,13 +24,107 @@ logger = logging.getLogger(__name__)
 
 
 class MetaDataStore(object):
+    TABLENAME = "metadata"
+    TABLEOPTIONS = {}
+    STOREID = "metadata"
+
     def __init__(self, connection_object):
         self.connection_object = connection_object
         self.connection_pool = connection_object.pool
 
-    TABLENAME = "metadata"
-    TABLEOPTIONS = {}
-    # row: deviceid data: last upload, last info
+    def table(self, connection):
+        return self.connection_object.get_table(self.TABLENAME, connection=connection)
+
+    def _create_tables(self, silent=False):
+        i = self.connection_object.get_admin_instance()
+        tables_before = [t.table_id for t in self.connection_object.get_current_tables()]
+        logger.warning("CREATE: Existing Tables: {}".format(tables_before))
+        table_name = self.connection_object.table_with_prefix(self.TABLENAME)
+        if silent and table_name in tables_before:
+            return
+        table = i.table(table_name)
+        table.create()
+
+        # Create Column Family
+        cf1 = table.column_family("p", gc_rule=MaxVersionsGCRule(1)) # Public
+        cf1.create()
+        time.sleep(0.5)
+        cf2 = table.column_family("i", gc_rule=MaxVersionsGCRule(1)) # Internal
+        cf2.create()
+
+        tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
+        logger.warning("CREATE: Created Tables After: {}".format(tables_after))
+
+    @classmethod
+    def get_row_key(cls, object_name, object_id):
+        row_key = "{}#{}".format(object_name, object_id)
+        return row_key
+
+    def put_metadata_items(self, items, internal=False):
+        if self.connection_object.read_only:
+            raise RuntimeError("Cannot execute put_metadata in readonly mode")    
+
+        # check data
+        for i in items:
+            if not isinstance(i.data, dict):
+                raise ValueError("Item {}.{}.{} is no dict".format(i.object_name, i.object_id, i.key))
+
+        column = "i:" if internal else "p:"
+
+        timer = time.time()
+        res = []
+        with self.connection_pool.connection() as conn:
+            dt = self.table(conn)
+            with Batch(dt) as b:
+                for i in items:
+                    row_key = self.get_row_key(i.object_name, i.object_id)
+                    cn = "{}{}".format(column, i.key)
+                    data = {cn: SerializableDict(i.data).to_msgpack()}
+                    b.put(row_key, data)
+
+        timer = time.time() - timer
+        logger.info("PUT META: {} inserts in {}".format(len(items), timer))
+        # print("PUT META: {} inserts in {}".format(len(items), timer))
+        return len(items)
+
+    def put_metadata(self, object_name, object_id, key, data, internal=False):
+        return self.put_metadata_items([MetaDataItem(object_name, object_id, key, data)],
+                                       internal=internal)
+
+    def get_metadata(self, object_name, object_id, keys=None, internal=False):
+        r = self.get_metadata_bulk(object_name, [object_id], keys=keys, internal=internal)
+        if len(r) > 0:
+            return r
+        return None
+
+    def get_metadata_bulk(self, object_name, object_ids, keys=None, internal=False):
+        row_keys = [self.get_row_key(object_name, id).encode("utf-8") for id in object_ids]
+        columns = "i:" if internal else "p:"
+
+        timer = time.time()
+
+        metadata = list()
+        with self.connection_pool.connection() as conn:
+            dt = self.table(conn)
+            res = dt.rows(row_keys, columns)
+
+        for row_key, data_dict in res:
+            o_name, o_id = row_key.decode("utf-8").split("#")
+            d = dict()
+            for k, value in data_dict.items():
+                s = k.decode("utf-8").split(":")
+                if len(s) != 2:
+                    continue
+                key = s[1]
+                if keys is not None and key not in keys:
+                    continue
+                data = SerializableDict.from_msgpack(value)
+                metadata.append(MetaDataItem(o_name, o_id, key, data))
+
+        timer = time.time() - timer
+        logger.info("GET METADATA: {} rows in {}".format(len(row_keys), timer))
+        # print("GET METADATA: {} rows in {}".format(len(row_keys), timer))
+        return metadata
 
 
 class ActivityStore(object):
@@ -330,7 +424,7 @@ class TimeSeriesStore(object):
             cf1 = t.column_family(metric_id, gc_rule=MaxVersionsGCRule(1))
             cf1.create()
             logger.warning("CREATE CF: Created Family: {}".format(metric_id))
-            time.sleep(1)
+            time.sleep(0.5)
         logger.warning("CREATE CF ALL: Finished")
 
     @classmethod

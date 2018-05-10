@@ -35,6 +35,9 @@ class Connection(object):
         from .stores import EventStore
         self.events = EventStore(self)
         self.register_store(self.events)
+        from .stores import MetaDataStore
+        self.metadata = MetaDataStore(self)
+        self.register_store(self.metadata)
 
     def get_admin_instance(self):
         if self.read_only:

@@ -191,5 +191,12 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(d2["1"], 1)
         self.assertEqual(d2[2], 3.4)
 
-        d = SerializableDict.from_proto_bytes(d1.to_proto_bytes())
-        self.assertEqual(d1["föö"], "bär")
+        d3 = SerializableDict.from_proto_bytes(d1.to_proto_bytes())
+        self.assertEqual(d3["föö"], "bär")
+
+        d4 = SerializableDict.from_msgpack(d1.to_msgpack())
+        self.assertEqual(d3["föö"], "bär")
+
+        self.assertTrue(isinstance(d4, dict))
+
+

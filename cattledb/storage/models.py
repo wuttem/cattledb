@@ -24,6 +24,7 @@ from .helper import ts_monthly_left, ts_monthly_right
 
 
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
+MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 
 
 class SeriesType(Enum):
@@ -443,3 +444,11 @@ class SerializableDict(dict):
     def to_proto_bytes(self):
         p = self.to_proto()
         return p.SerializeToString()
+
+    def to_msgpack(self):
+        return msgpack.packb(dict(self), use_bin_type=True)
+
+    @classmethod
+    def from_msgpack(cls, b):
+        i = cls(dict(msgpack.unpackb(b, raw=False)))
+        return i
