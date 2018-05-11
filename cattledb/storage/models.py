@@ -323,19 +323,19 @@ class TimeSeries(object):
     def to_proto(self):
         if self.series_type == SeriesType.FLOATSERIES:
             ts = FloatTimeSeries()
-            ts.values[:] = self._values
+            ts.values.extend(self._values)
         elif self.series_type == SeriesType.DICTSERIES:
             ts = DictTimeSeries()
             proto_dicts = []
             for v in self._values:
                 proto_dicts.append(SerializableDict(v).to_proto())
-            ts.values[:] = proto_dicts
+            ts.values.extend(proto_dicts)
         else:
             raise NotImplementedError("wrong series type")
         ts.metric = self.metric
         ts.key = self.key
-        ts.timestamps[:] = self._timestamps
-        ts.timestamp_offsets[:] = self._timestamp_offsets
+        ts.timestamps.extend(self._timestamps)
+        ts.timestamp_offsets.extend(self._timestamp_offsets)
         return ts
 
     def to_proto_bytes(self):
@@ -413,6 +413,16 @@ class EventList(TimeSeries):
     @property
     def name(self):
         return self.metric
+
+    @classmethod
+    def from_proto(cls, p):
+        i = cls(p.key, p.name)
+        i._timestamps = array.array("I", p.timestamps)
+        i._timestamp_offsets = array.array("i", p.timestamp_offsets)
+        i._values = [SerializableDict.from_proto(x) for x in p.values]
+        if not bool(i):
+            raise ValueError("empty or invalid timeseries")
+        return i
 
 
 class SerializableDict(dict):

@@ -12,7 +12,8 @@ os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8080"
 
 db = Connection(project_id='test-system', instance_id='test')
 db.create_tables(silent=True)
-db.create_data_family("ph", silent=True)
+db.timeseries._create_metric("ph", silent=True)
+db.timeseries._create_metric("temp", silent=True)
 # exit()
 #print(db.write_data_cell("1234", "raw:6", "hello world"))
 #print(db.read_row("1234"))
@@ -26,7 +27,7 @@ db.create_data_family("ph", silent=True)
 # series = TimeSeries.from_list("ph", points)
 # db.insert_timeseries("mydevice", series)
 
-print(db.get_single_timeseries("0000000050", "ph", 0, 5*24*60*60))
+print(db.get("0000000050", "ph", 0, 5*24*60*60))
 
 # print(db.read_row("mydevice#30004940"))
 # client = bigtable.Client(project='smaxtec-system', admin=True)

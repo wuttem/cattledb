@@ -42,11 +42,11 @@ message LastValuesRequest {
 
 service Events {
     // pull
-    rpc get (EventsRequest) returns (DictTimeSeries) {}
-    rpc lastEvents(LastEventsRequest) returns (DictTimeSeries) {}
+    rpc get (EventsRequest) returns (EventSeries) {}
+    rpc lastEvents(LastEventsRequest) returns (EventSeries) {}
 
     // push
-    rpc put (DictTimeSeries) returns (PutResult) {}
+    rpc put (EventSeries) returns (PutResult) {}
 
     // delete
     rpc delete (EventsRequest) returns (DeleteResult) {}
@@ -196,6 +196,15 @@ message Dictionary {
 message DictTimeSeries {
     string key = 1;
     string metric = 2;
+    repeated int64 timestamps = 3;
+    repeated Dictionary values = 4;
+    repeated sint32 timestamp_offsets = 5;
+}
+
+
+message EventSeries {
+    string key = 1;
+    string name = 2;
     repeated int64 timestamps = 3;
     repeated Dictionary values = 4;
     repeated sint32 timestamp_offsets = 5;

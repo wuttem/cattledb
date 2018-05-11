@@ -3,6 +3,7 @@ import grpc
 
 from . import cdb_pb2 as cdb__pb2
 
+
 class TimeSeriesStub(object):
   # missing associated documentation comment in .proto file
   pass
@@ -143,16 +144,16 @@ class EventsStub(object):
     self.get = channel.unary_unary(
         '/Events/get',
         request_serializer=cdb__pb2.EventsRequest.SerializeToString,
-        response_deserializer=cdb__pb2.DictTimeSeries.FromString,
+        response_deserializer=cdb__pb2.EventSeries.FromString,
         )
     self.lastEvents = channel.unary_unary(
         '/Events/lastEvents',
         request_serializer=cdb__pb2.LastEventsRequest.SerializeToString,
-        response_deserializer=cdb__pb2.DictTimeSeries.FromString,
+        response_deserializer=cdb__pb2.EventSeries.FromString,
         )
     self.put = channel.unary_unary(
         '/Events/put',
-        request_serializer=cdb__pb2.DictTimeSeries.SerializeToString,
+        request_serializer=cdb__pb2.EventSeries.SerializeToString,
         response_deserializer=cdb__pb2.PutResult.FromString,
         )
     self.delete = channel.unary_unary(
@@ -200,16 +201,16 @@ def add_EventsServicer_to_server(servicer, server):
       'get': grpc.unary_unary_rpc_method_handler(
           servicer.get,
           request_deserializer=cdb__pb2.EventsRequest.FromString,
-          response_serializer=cdb__pb2.DictTimeSeries.SerializeToString,
+          response_serializer=cdb__pb2.EventSeries.SerializeToString,
       ),
       'lastEvents': grpc.unary_unary_rpc_method_handler(
           servicer.lastEvents,
           request_deserializer=cdb__pb2.LastEventsRequest.FromString,
-          response_serializer=cdb__pb2.DictTimeSeries.SerializeToString,
+          response_serializer=cdb__pb2.EventSeries.SerializeToString,
       ),
       'put': grpc.unary_unary_rpc_method_handler(
           servicer.put,
-          request_deserializer=cdb__pb2.DictTimeSeries.FromString,
+          request_deserializer=cdb__pb2.EventSeries.FromString,
           response_serializer=cdb__pb2.PutResult.SerializeToString,
       ),
       'delete': grpc.unary_unary_rpc_method_handler(

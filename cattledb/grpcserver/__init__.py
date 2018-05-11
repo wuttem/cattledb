@@ -7,8 +7,9 @@ import os
 import grpc
 from concurrent import futures
 
-from .cdb_pb2_grpc import add_TimeSeriesServicer_to_server
+from .cdb_pb2_grpc import add_TimeSeriesServicer_to_server, add_EventsServicer_to_server, add_MetaDataServicer_to_server, add_ActivityServicer_to_server
 from ..settings import available_configs
+from ..storage import Connection
 
 
 def setup_logging(config):
@@ -59,10 +60,20 @@ def create_server(settings_override=None,
     table_prefix = config.TABLE_PREFIX
     if config.STAGING:
          read_only=True
+    db_connection = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
+                               pool_size=pool_size, table_prefix=table_prefix, credentials=credentials)
+
     from .services import TimeSeriesServicer
-    db_service = TimeSeriesServicer(project_id, instance_id, read_only=read_only,
-                                    pool_size=pool_size, table_prefix=table_prefix,
-                                    credentials=credentials)
-    add_TimeSeriesServicer_to_server(db_service, server)
+    ts_store = TimeSeriesServicer(db_connection)
+    add_TimeSeriesServicer_to_server(ts_store, server)
+    from .services import EventsServicer
+    ev_store = EventsServicer(db_connection)
+    add_EventsServicer_to_server(ev_store, server)
+    from .services import MetaDataServicer
+    meta_store = MetaDataServicer(db_connection)
+    add_MetaDataServicer_to_server(meta_store, server)
+    from .services import ActivityServicer
+    act_store = ActivityServicer(db_connection)
+    add_ActivityServicer_to_server(act_store, server)
 
     return server
