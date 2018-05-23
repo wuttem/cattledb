@@ -78,8 +78,8 @@ service Activity {
     // pull
     rpc getTotal(TotalActivityRequest) returns (ActivityResponse) {}
     rpc getDay(ActivityDayRequest) returns (ActivityResponse) {}
-    rpc getReader(ReaderActivityRequest) returns (ActivityResponse) {}
-  
+    rpc getReader(ReaderActivityRequest) returns (DeviceActivityResponse) {}
+
     // push
     rpc increment(IncrementActivityRequest) returns (PutResult) {}
 }
@@ -88,25 +88,25 @@ service Activity {
 message IncrementActivityRequest {
     string reader_id = 1;
     string device_id = 2;
-    int64 timestamp = 3;
+    string timestamp = 3;
     int32 value = 4;
     repeated string parent_ids = 5;
 }
 
 
 message TotalActivityRequest {
-    int64 day_ts = 1;
+    string day_datetime = 1;
 }
 
 
 message ActivityDayRequest {
     string parent_id = 2;
-    int64 day_ts = 1;
+    string day_datetime = 1;
 }
 
 
 message ReaderActivityRequest {
-    string parent_id = 1;
+    string reader_id = 1;
     string from_datetime = 2;
     string to_datetime = 3;
 }
@@ -114,6 +114,16 @@ message ReaderActivityRequest {
 
 message ActivityResponse {
     repeated ReaderActivity activities = 1;
+}
+
+message DeviceActivityResponse {
+    repeated DeviceActivity activities = 1;
+}
+
+message DeviceActivity {
+    string day_hour = 1;
+    string device_id = 2;
+    int32 counter = 4;
 }
 
 message ReaderActivity {
@@ -126,26 +136,29 @@ message ReaderActivity {
 service MetaData {
     // pull
     rpc get (MetaDataRequest) returns (MetaDataResponse) {}
-  
+
     // push
     rpc put (MetaDataPost) returns (PutResult) {}
 }
 
 
 message MetaDataRequest {
-    string key = 1;
+    string object_name = 1;
+    string object_key = 2;
     repeated string namespaces = 3;
 }
 
 
 message MetaDataResponse {
-    string key = 1;
+    string object_name = 1;
+    string object_key = 2;
     repeated MetaDataDict data = 3;
 }
 
 
 message MetaDataPost {
-    string key = 1;
+    string object_name = 1;
+    string object_key = 2;
     repeated MetaDataDict data = 3;
 }
 

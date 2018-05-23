@@ -19,7 +19,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='cdb.proto',
   package='',
   syntax='proto3',
-  serialized_pb=_b('\n\tcdb.proto\"\\\n\x11TimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"b\n\x16MultiTimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"b\n\x11LastValuesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\x12\x10\n\x08max_days\x18\x03 \x01(\x05\x12\x0e\n\x06max_ts\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"V\n\rEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"_\n\x11LastEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\r\n\x05\x63ount\x18\x03 \x01(\x05\x12\x10\n\x08max_days\x18\x04 \x01(\x05\x12\x0e\n\x06max_ts\x18\x05 \x01(\t\"v\n\x18IncrementActivityRequest\x12\x11\n\treader_id\x18\x01 \x01(\t\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\x03\x12\r\n\x05value\x18\x04 \x01(\x05\x12\x12\n\nparent_ids\x18\x05 \x03(\t\"&\n\x14TotalActivityRequest\x12\x0e\n\x06\x64\x61y_ts\x18\x01 \x01(\x03\"7\n\x12\x41\x63tivityDayRequest\x12\x11\n\tparent_id\x18\x02 \x01(\t\x12\x0e\n\x06\x64\x61y_ts\x18\x01 \x01(\x03\"V\n\x15ReaderActivityRequest\x12\x11\n\tparent_id\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x02 \x01(\t\x12\x13\n\x0bto_datetime\x18\x03 \x01(\t\"7\n\x10\x41\x63tivityResponse\x12#\n\nactivities\x18\x01 \x03(\x0b\x32\x0f.ReaderActivity\"I\n\x0eReaderActivity\x12\x10\n\x08\x64\x61y_hour\x18\x01 \x01(\t\x12\x11\n\treader_id\x18\x02 \x01(\t\x12\x12\n\ndevice_ids\x18\x04 \x03(\t\"2\n\x0fMetaDataRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x12\n\nnamespaces\x18\x03 \x03(\t\"<\n\x10MetaDataResponse\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"8\n\x0cMetaDataPost\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"7\n\x0cMetaDataDict\x12\x11\n\tnamespace\x18\x01 \x01(\t\x12\x14\n\x05pairs\x18\x02 \x03(\x0b\x32\x05.Pair\";\n\tPutResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\">\n\x0c\x44\x65leteResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\"*\n\tFloatItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x02\")\n\x08\x42lobItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x0c\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\"\n\nDictionary\x12\x14\n\x05pairs\x18\x01 \x03(\x0b\x32\x05.Pair\"y\n\x0e\x44ictTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"t\n\x0b\x45ventSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"m\n\x0f\x46loatTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x0e\n\x06values\x18\x04 \x03(\x02\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"5\n\x13\x46loatTimeSeriesList\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.FloatTimeSeries2\xbd\x02\n\nTimeSeries\x12-\n\x03get\x12\x12.TimeSeriesRequest\x1a\x10.FloatTimeSeries\"\x00\x12;\n\x08getMulti\x12\x17.MultiTimeSeriesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12\x38\n\nlastValues\x12\x12.LastValuesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12%\n\x03put\x12\x10.FloatTimeSeries\x1a\n.PutResult\"\x00\x12.\n\x08putMulti\x12\x14.FloatTimeSeriesList\x1a\n.PutResult\"\x00\x12\x32\n\x06\x64\x65lete\x12\x17.MultiTimeSeriesRequest\x1a\r.DeleteResult\"\x00\x32\xaf\x01\n\x06\x45vents\x12%\n\x03get\x12\x0e.EventsRequest\x1a\x0c.EventSeries\"\x00\x12\x30\n\nlastEvents\x12\x12.LastEventsRequest\x1a\x0c.EventSeries\"\x00\x12!\n\x03put\x12\x0c.EventSeries\x1a\n.PutResult\"\x00\x12)\n\x06\x64\x65lete\x12\x0e.EventsRequest\x1a\r.DeleteResult\"\x00\x32\xe6\x01\n\x08\x41\x63tivity\x12\x36\n\x08getTotal\x12\x15.TotalActivityRequest\x1a\x11.ActivityResponse\"\x00\x12\x32\n\x06getDay\x12\x13.ActivityDayRequest\x1a\x11.ActivityResponse\"\x00\x12\x38\n\tgetReader\x12\x16.ReaderActivityRequest\x1a\x11.ActivityResponse\"\x00\x12\x34\n\tincrement\x12\x19.IncrementActivityRequest\x1a\n.PutResult\"\x00\x32\\\n\x08MetaData\x12,\n\x03get\x12\x10.MetaDataRequest\x1a\x11.MetaDataResponse\"\x00\x12\"\n\x03put\x12\r.MetaDataPost\x1a\n.PutResult\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\tcdb.proto\"\\\n\x11TimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"b\n\x16MultiTimeSeriesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"b\n\x11LastValuesRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05\x63ount\x18\x02 \x01(\x05\x12\x10\n\x08max_days\x18\x03 \x01(\x05\x12\x0e\n\x06max_ts\x18\x04 \x01(\t\x12\x0f\n\x07metrics\x18\x06 \x03(\t\"V\n\rEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x15\n\rfrom_datetime\x18\x03 \x01(\t\x12\x13\n\x0bto_datetime\x18\x04 \x01(\t\"_\n\x11LastEventsRequest\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\r\n\x05\x63ount\x18\x03 \x01(\x05\x12\x10\n\x08max_days\x18\x04 \x01(\x05\x12\x0e\n\x06max_ts\x18\x05 \x01(\t\"v\n\x18IncrementActivityRequest\x12\x11\n\treader_id\x18\x01 \x01(\t\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\t\x12\r\n\x05value\x18\x04 \x01(\x05\x12\x12\n\nparent_ids\x18\x05 \x03(\t\",\n\x14TotalActivityRequest\x12\x14\n\x0c\x64\x61y_datetime\x18\x01 \x01(\t\"=\n\x12\x41\x63tivityDayRequest\x12\x11\n\tparent_id\x18\x02 \x01(\t\x12\x14\n\x0c\x64\x61y_datetime\x18\x01 \x01(\t\"V\n\x15ReaderActivityRequest\x12\x11\n\treader_id\x18\x01 \x01(\t\x12\x15\n\rfrom_datetime\x18\x02 \x01(\t\x12\x13\n\x0bto_datetime\x18\x03 \x01(\t\"7\n\x10\x41\x63tivityResponse\x12#\n\nactivities\x18\x01 \x03(\x0b\x32\x0f.ReaderActivity\"=\n\x16\x44\x65viceActivityResponse\x12#\n\nactivities\x18\x01 \x03(\x0b\x32\x0f.DeviceActivity\"F\n\x0e\x44\x65viceActivity\x12\x10\n\x08\x64\x61y_hour\x18\x01 \x01(\t\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x0f\n\x07\x63ounter\x18\x04 \x01(\x05\"I\n\x0eReaderActivity\x12\x10\n\x08\x64\x61y_hour\x18\x01 \x01(\t\x12\x11\n\treader_id\x18\x02 \x01(\t\x12\x12\n\ndevice_ids\x18\x04 \x03(\t\"N\n\x0fMetaDataRequest\x12\x13\n\x0bobject_name\x18\x01 \x01(\t\x12\x12\n\nobject_key\x18\x02 \x01(\t\x12\x12\n\nnamespaces\x18\x03 \x03(\t\"X\n\x10MetaDataResponse\x12\x13\n\x0bobject_name\x18\x01 \x01(\t\x12\x12\n\nobject_key\x18\x02 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"T\n\x0cMetaDataPost\x12\x13\n\x0bobject_name\x18\x01 \x01(\t\x12\x12\n\nobject_key\x18\x02 \x01(\t\x12\x1b\n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\r.MetaDataDict\"7\n\x0cMetaDataDict\x12\x11\n\tnamespace\x18\x01 \x01(\t\x12\x14\n\x05pairs\x18\x02 \x03(\x0b\x32\x05.Pair\";\n\tPutResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\">\n\x0c\x44\x65leteResult\x12\x0c\n\x04\x63ode\x18\x01 \x01(\x05\x12\x0f\n\x07\x63ounter\x18\x02 \x01(\x03\x12\x0f\n\x07message\x18\x03 \x01(\t\"*\n\tFloatItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x02\")\n\x08\x42lobItem\x12\x0e\n\x06offset\x18\x01 \x01(\x11\x12\r\n\x05value\x18\x02 \x01(\x0c\"\"\n\x04Pair\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\"\n\nDictionary\x12\x14\n\x05pairs\x18\x01 \x03(\x0b\x32\x05.Pair\"y\n\x0e\x44ictTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"t\n\x0b\x45ventSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x1b\n\x06values\x18\x04 \x03(\x0b\x32\x0b.Dictionary\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"m\n\x0f\x46loatTimeSeries\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0e\n\x06metric\x18\x02 \x01(\t\x12\x12\n\ntimestamps\x18\x03 \x03(\x03\x12\x0e\n\x06values\x18\x04 \x03(\x02\x12\x19\n\x11timestamp_offsets\x18\x05 \x03(\x11\"5\n\x13\x46loatTimeSeriesList\x12\x1e\n\x04\x64\x61ta\x18\x01 \x03(\x0b\x32\x10.FloatTimeSeries2\xbd\x02\n\nTimeSeries\x12-\n\x03get\x12\x12.TimeSeriesRequest\x1a\x10.FloatTimeSeries\"\x00\x12;\n\x08getMulti\x12\x17.MultiTimeSeriesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12\x38\n\nlastValues\x12\x12.LastValuesRequest\x1a\x14.FloatTimeSeriesList\"\x00\x12%\n\x03put\x12\x10.FloatTimeSeries\x1a\n.PutResult\"\x00\x12.\n\x08putMulti\x12\x14.FloatTimeSeriesList\x1a\n.PutResult\"\x00\x12\x32\n\x06\x64\x65lete\x12\x17.MultiTimeSeriesRequest\x1a\r.DeleteResult\"\x00\x32\xaf\x01\n\x06\x45vents\x12%\n\x03get\x12\x0e.EventsRequest\x1a\x0c.EventSeries\"\x00\x12\x30\n\nlastEvents\x12\x12.LastEventsRequest\x1a\x0c.EventSeries\"\x00\x12!\n\x03put\x12\x0c.EventSeries\x1a\n.PutResult\"\x00\x12)\n\x06\x64\x65lete\x12\x0e.EventsRequest\x1a\r.DeleteResult\"\x00\x32\xec\x01\n\x08\x41\x63tivity\x12\x36\n\x08getTotal\x12\x15.TotalActivityRequest\x1a\x11.ActivityResponse\"\x00\x12\x32\n\x06getDay\x12\x13.ActivityDayRequest\x1a\x11.ActivityResponse\"\x00\x12>\n\tgetReader\x12\x16.ReaderActivityRequest\x1a\x17.DeviceActivityResponse\"\x00\x12\x34\n\tincrement\x12\x19.IncrementActivityRequest\x1a\n.PutResult\"\x00\x32\\\n\x08MetaData\x12,\n\x03get\x12\x10.MetaDataRequest\x1a\x11.MetaDataResponse\"\x00\x12\"\n\x03put\x12\r.MetaDataPost\x1a\n.PutResult\"\x00\x62\x06proto3')
 )
 
 
@@ -322,8 +322,8 @@ _INCREMENTACTIVITYREQUEST = _descriptor.Descriptor(
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='timestamp', full_name='IncrementActivityRequest.timestamp', index=2,
-      number=3, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -366,9 +366,9 @@ _TOTALACTIVITYREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='day_ts', full_name='TotalActivityRequest.day_ts', index=0,
-      number=1, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
+      name='day_datetime', full_name='TotalActivityRequest.day_datetime', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -385,7 +385,7 @@ _TOTALACTIVITYREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=612,
-  serialized_end=650,
+  serialized_end=656,
 )
 
 
@@ -404,9 +404,9 @@ _ACTIVITYDAYREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='day_ts', full_name='ActivityDayRequest.day_ts', index=1,
-      number=1, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
+      name='day_datetime', full_name='ActivityDayRequest.day_datetime', index=1,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
@@ -422,8 +422,8 @@ _ACTIVITYDAYREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=652,
-  serialized_end=707,
+  serialized_start=658,
+  serialized_end=719,
 )
 
 
@@ -435,7 +435,7 @@ _READERACTIVITYREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='parent_id', full_name='ReaderActivityRequest.parent_id', index=0,
+      name='reader_id', full_name='ReaderActivityRequest.reader_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -467,8 +467,8 @@ _READERACTIVITYREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=709,
-  serialized_end=795,
+  serialized_start=721,
+  serialized_end=807,
 )
 
 
@@ -498,8 +498,84 @@ _ACTIVITYRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=797,
-  serialized_end=852,
+  serialized_start=809,
+  serialized_end=864,
+)
+
+
+_DEVICEACTIVITYRESPONSE = _descriptor.Descriptor(
+  name='DeviceActivityResponse',
+  full_name='DeviceActivityResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='activities', full_name='DeviceActivityResponse.activities', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=866,
+  serialized_end=927,
+)
+
+
+_DEVICEACTIVITY = _descriptor.Descriptor(
+  name='DeviceActivity',
+  full_name='DeviceActivity',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='day_hour', full_name='DeviceActivity.day_hour', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='device_id', full_name='DeviceActivity.device_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='counter', full_name='DeviceActivity.counter', index=2,
+      number=4, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=929,
+  serialized_end=999,
 )
 
 
@@ -543,8 +619,8 @@ _READERACTIVITY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=854,
-  serialized_end=927,
+  serialized_start=1001,
+  serialized_end=1074,
 )
 
 
@@ -556,14 +632,21 @@ _METADATAREQUEST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='MetaDataRequest.key', index=0,
+      name='object_name', full_name='MetaDataRequest.object_name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='namespaces', full_name='MetaDataRequest.namespaces', index=1,
+      name='object_key', full_name='MetaDataRequest.object_key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='namespaces', full_name='MetaDataRequest.namespaces', index=2,
       number=3, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -581,8 +664,8 @@ _METADATAREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=929,
-  serialized_end=979,
+  serialized_start=1076,
+  serialized_end=1154,
 )
 
 
@@ -594,14 +677,21 @@ _METADATARESPONSE = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='MetaDataResponse.key', index=0,
+      name='object_name', full_name='MetaDataResponse.object_name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='data', full_name='MetaDataResponse.data', index=1,
+      name='object_key', full_name='MetaDataResponse.object_key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='MetaDataResponse.data', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -619,8 +709,8 @@ _METADATARESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=981,
-  serialized_end=1041,
+  serialized_start=1156,
+  serialized_end=1244,
 )
 
 
@@ -632,14 +722,21 @@ _METADATAPOST = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='MetaDataPost.key', index=0,
+      name='object_name', full_name='MetaDataPost.object_name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='data', full_name='MetaDataPost.data', index=1,
+      name='object_key', full_name='MetaDataPost.object_key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='MetaDataPost.data', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -657,8 +754,8 @@ _METADATAPOST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1043,
-  serialized_end=1099,
+  serialized_start=1246,
+  serialized_end=1330,
 )
 
 
@@ -695,8 +792,8 @@ _METADATADICT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1101,
-  serialized_end=1156,
+  serialized_start=1332,
+  serialized_end=1387,
 )
 
 
@@ -740,8 +837,8 @@ _PUTRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1158,
-  serialized_end=1217,
+  serialized_start=1389,
+  serialized_end=1448,
 )
 
 
@@ -785,8 +882,8 @@ _DELETERESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1219,
-  serialized_end=1281,
+  serialized_start=1450,
+  serialized_end=1512,
 )
 
 
@@ -823,8 +920,8 @@ _FLOATITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1283,
-  serialized_end=1325,
+  serialized_start=1514,
+  serialized_end=1556,
 )
 
 
@@ -861,8 +958,8 @@ _BLOBITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1327,
-  serialized_end=1368,
+  serialized_start=1558,
+  serialized_end=1599,
 )
 
 
@@ -899,8 +996,8 @@ _PAIR = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1370,
-  serialized_end=1404,
+  serialized_start=1601,
+  serialized_end=1635,
 )
 
 
@@ -930,8 +1027,8 @@ _DICTIONARY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1406,
-  serialized_end=1440,
+  serialized_start=1637,
+  serialized_end=1671,
 )
 
 
@@ -989,8 +1086,8 @@ _DICTTIMESERIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1442,
-  serialized_end=1563,
+  serialized_start=1673,
+  serialized_end=1794,
 )
 
 
@@ -1048,8 +1145,8 @@ _EVENTSERIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1565,
-  serialized_end=1681,
+  serialized_start=1796,
+  serialized_end=1912,
 )
 
 
@@ -1107,8 +1204,8 @@ _FLOATTIMESERIES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1683,
-  serialized_end=1792,
+  serialized_start=1914,
+  serialized_end=2023,
 )
 
 
@@ -1138,11 +1235,12 @@ _FLOATTIMESERIESLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1794,
-  serialized_end=1847,
+  serialized_start=2025,
+  serialized_end=2078,
 )
 
 _ACTIVITYRESPONSE.fields_by_name['activities'].message_type = _READERACTIVITY
+_DEVICEACTIVITYRESPONSE.fields_by_name['activities'].message_type = _DEVICEACTIVITY
 _METADATARESPONSE.fields_by_name['data'].message_type = _METADATADICT
 _METADATAPOST.fields_by_name['data'].message_type = _METADATADICT
 _METADATADICT.fields_by_name['pairs'].message_type = _PAIR
@@ -1160,6 +1258,8 @@ DESCRIPTOR.message_types_by_name['TotalActivityRequest'] = _TOTALACTIVITYREQUEST
 DESCRIPTOR.message_types_by_name['ActivityDayRequest'] = _ACTIVITYDAYREQUEST
 DESCRIPTOR.message_types_by_name['ReaderActivityRequest'] = _READERACTIVITYREQUEST
 DESCRIPTOR.message_types_by_name['ActivityResponse'] = _ACTIVITYRESPONSE
+DESCRIPTOR.message_types_by_name['DeviceActivityResponse'] = _DEVICEACTIVITYRESPONSE
+DESCRIPTOR.message_types_by_name['DeviceActivity'] = _DEVICEACTIVITY
 DESCRIPTOR.message_types_by_name['ReaderActivity'] = _READERACTIVITY
 DESCRIPTOR.message_types_by_name['MetaDataRequest'] = _METADATAREQUEST
 DESCRIPTOR.message_types_by_name['MetaDataResponse'] = _METADATARESPONSE
@@ -1246,6 +1346,20 @@ ActivityResponse = _reflection.GeneratedProtocolMessageType('ActivityResponse', 
   # @@protoc_insertion_point(class_scope:ActivityResponse)
   ))
 _sym_db.RegisterMessage(ActivityResponse)
+
+DeviceActivityResponse = _reflection.GeneratedProtocolMessageType('DeviceActivityResponse', (_message.Message,), dict(
+  DESCRIPTOR = _DEVICEACTIVITYRESPONSE,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:DeviceActivityResponse)
+  ))
+_sym_db.RegisterMessage(DeviceActivityResponse)
+
+DeviceActivity = _reflection.GeneratedProtocolMessageType('DeviceActivity', (_message.Message,), dict(
+  DESCRIPTOR = _DEVICEACTIVITY,
+  __module__ = 'cdb_pb2'
+  # @@protoc_insertion_point(class_scope:DeviceActivity)
+  ))
+_sym_db.RegisterMessage(DeviceActivity)
 
 ReaderActivity = _reflection.GeneratedProtocolMessageType('ReaderActivity', (_message.Message,), dict(
   DESCRIPTOR = _READERACTIVITY,
@@ -1360,8 +1474,8 @@ _TIMESERIES = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1850,
-  serialized_end=2167,
+  serialized_start=2081,
+  serialized_end=2398,
   methods=[
   _descriptor.MethodDescriptor(
     name='get',
@@ -1429,8 +1543,8 @@ _EVENTS = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   options=None,
-  serialized_start=2170,
-  serialized_end=2345,
+  serialized_start=2401,
+  serialized_end=2576,
   methods=[
   _descriptor.MethodDescriptor(
     name='get',
@@ -1480,8 +1594,8 @@ _ACTIVITY = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=2,
   options=None,
-  serialized_start=2348,
-  serialized_end=2578,
+  serialized_start=2579,
+  serialized_end=2815,
   methods=[
   _descriptor.MethodDescriptor(
     name='getTotal',
@@ -1507,7 +1621,7 @@ _ACTIVITY = _descriptor.ServiceDescriptor(
     index=2,
     containing_service=None,
     input_type=_READERACTIVITYREQUEST,
-    output_type=_ACTIVITYRESPONSE,
+    output_type=_DEVICEACTIVITYRESPONSE,
     options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1531,8 +1645,8 @@ _METADATA = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=3,
   options=None,
-  serialized_start=2580,
-  serialized_end=2672,
+  serialized_start=2817,
+  serialized_end=2909,
   methods=[
   _descriptor.MethodDescriptor(
     name='get',

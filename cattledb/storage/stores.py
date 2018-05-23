@@ -15,7 +15,7 @@ from google.cloud import happybase
 from google.cloud.happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps
-from .models import TimeSeries, EventList, MetaDataItem, SerializableDict
+from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
 
@@ -62,7 +62,7 @@ class MetaDataStore(object):
 
     def put_metadata_items(self, items, internal=False):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute put_metadata in readonly mode")    
+            raise RuntimeError("Cannot execute put_metadata in readonly mode")
 
         # check data
         for i in items:
@@ -236,7 +236,7 @@ class ActivityStore(object):
         modified_cells = row.commit()
         # Get the cells in the modified column,
         # column_cells = modified_cells[column_family_id][column_qualifier]
-        
+
         if six.PY2:
             column_cells = modified_cells[column_family_id][column_qualifier]
         else:
@@ -263,9 +263,12 @@ class ActivityStore(object):
 
     def incr_activity(self, reader_id, device_id, timestamp, parent_ids=None, value=1):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute incr_activity in readonly mode")    
+            raise RuntimeError("Cannot execute incr_activity in readonly mode")
 
         # todo check timestamp
+        if not (time.time() - 3*365*24*60*60) < timestamp < (time.time() + 30*24*60*60):
+            raise ValueError("timestamp out of activity window -3y +30d")
+
         row_keys = self.get_insert_keys(reader_id, timestamp, parent_ids)
         column = "c:{}.{}".format(self.get_hour_key(timestamp), device_id)
 
@@ -296,7 +299,7 @@ class ActivityStore(object):
 
         timer = time.time()
 
-        activitys = defaultdict(lambda: defaultdict(list))
+        activitys = defaultdict(lambda: defaultdict(int))
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             res = dt.rows(row_keys, columns)
@@ -314,13 +317,18 @@ class ActivityStore(object):
                 day_hour = "{}{}".format(day, p[0])
                 # parse value
                 int_value, = struct.Struct('>q').unpack(value)
-                activitys[day_hour][p[1]].append(int_value)
+                activitys[day_hour][p[1]] += int_value
 
         timer = time.time() - timer
         logger.info("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
         # print("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
-        return [(k, dict(activitys[k])) for k in sorted(activitys.keys())]
-
+        out = []
+        for day_hour in sorted(activitys.keys()):
+            inner = activitys[day_hour]
+            for device_id in sorted(inner.keys()):
+                count = inner[device_id]
+                out.append(DeviceActivityItem(day_hour, device_id, count))
+        return out
 
     def get_activity_for_day(self, parent_id, day_ts):
         start_search_row = self.get_row_key(parent_id, day_ts).encode("utf-8")
@@ -362,14 +370,21 @@ class ActivityStore(object):
         timer = time.time() - timer
         logger.info("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
         # print("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
-        return [(k, dict(activitys[k])) for k in sorted(activitys.keys())]
+        out = []
+        for day_hour in sorted(activitys.keys()):
+            inner = activitys[day_hour]
+            for reader_id in sorted(inner.keys()):
+                devices = inner[reader_id]
+                out.append(ReaderActivityItem(day_hour, reader_id, devices))
+        return out
+        #return [(k, dict(activitys[k])) for k in sorted(activitys.keys())]
 
 
 class TimeSeriesStore(object):
     TABLENAME = "timeseries"
     TABLEOPTIONS = {}
     STOREID = "timeseries"
-    MAX_GET_SIZE = 400 * 24 * 60 * 60 # A bit more than a year
+    MAX_GET_SIZE = 400 * 24 * 60 * 60  # A bit more than a year
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -449,7 +464,7 @@ class TimeSeriesStore(object):
 
     def insert_timeseries(self, ts):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute insert_timeseries command in readonly mode")    
+            raise RuntimeError("Cannot execute insert_timeseries command in readonly mode")
 
         assert bool(ts)
         metric_object = self.get_metric_object(ts.metric)
@@ -469,7 +484,7 @@ class TimeSeriesStore(object):
         logger.info("INSERT: {}.{}, {} points in {}".format(key, metric_object.name, len(ts), timer))
         # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
         return len(ts)
-    
+
     def insert(self, key, metric, data):
         ts = TimeSeries(key, metric, data)
         return self.insert_timeseries(ts)
@@ -650,7 +665,7 @@ class EventStore(object):
 
     def insert_events(self, event_list):
         if self.connection_object.read_only:
-            raise RuntimeError("Cannot execute insert_eventlist command in readonly mode")    
+            raise RuntimeError("Cannot execute insert_eventlist command in readonly mode")
 
         assert bool(event_list)
         name = event_list.metric

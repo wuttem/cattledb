@@ -100,9 +100,9 @@ class ModelTest(unittest.TestCase):
 
     def test_dictitem(self):
         i1 = TimeSeries("test", "ph", series_type=SeriesType.DICTSERIES)
-        self.assertFalse(i1)
+        self.assertTrue(i1.empty())
         i1.insert_point(1, dict(hey=1.0, ho=2.0))
-        self.assertTrue(i1)
+        self.assertFalse(i1.empty())
 
         i2 = TimeSeries("test1", "ph", [(1, 1.0)])
         self.assertEqual(i2[0].value, 1.0)

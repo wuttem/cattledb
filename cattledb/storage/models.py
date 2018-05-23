@@ -8,6 +8,7 @@ import pendulum
 from datetime import datetime
 import msgpack
 import struct
+import json
 
 import bisect
 import logging
@@ -15,7 +16,7 @@ import array
 import hashlib
 from enum import Enum
 
-from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair
+from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_hourly_left, ts_hourly_right
@@ -71,8 +72,7 @@ class TimeSeries(object):
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
         i._values = list(p.values)
-        if not bool(i):
-            raise ValueError("empty or invalid timeseries")
+        i.check_series()
         return i
 
     @classmethod
@@ -82,21 +82,29 @@ class TimeSeries(object):
     def __len__(self):
         return len(self._timestamps)
 
-    def __bool__(self):  # Python 3
+    def empty(self):
         if len(self) < 1:
-            return False
-        
-        assert len(self._timestamps) == len(self._values) == len(self._timestamp_offsets)
-        self.checkSorted()
-        return True
+            return True
+        return False
 
-    def checkSorted(self):
+    def check_series(self):
+        assert len(self._timestamps) == len(self._values) == len(self._timestamp_offsets)
+        if len(self) > 0:
+            self.check_sorted()
+
+    def __bool__(self):  # Python 3
+        self.check_series()
+        if len(self) > 0:
+            return True
+        return False
+
+    def check_sorted(self):
         it = iter(self._timestamps)
         it.__next__()
         assert all(b >= a for a, b in zip(self._timestamps, it))
 
     def to_hash(self):
-        s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self), 
+        s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self),
                                     self.ts_min, self.ts_max)
         return hashlib.sha1(s.encode("utf-8")).hexdigest()
 
@@ -112,7 +120,11 @@ class TimeSeries(object):
         if not isinstance(other, TimeSeries):
             raise ValueError("cannot append %s to TimeSeries", other)
 
-        assert bool(other)
+        other.check_series()
+
+        if len(other) < 1:
+            return
+
         assert self.ts_max < other.ts_min
         assert self.key == other.key
         assert self.metric == other.metric
@@ -261,7 +273,7 @@ class TimeSeries(object):
         counter = 0
         for timestamp, value in series:
             counter += self.insert_point(timestamp, value)
-        self.checkSorted() # may be removed
+        self.check_series() # may be removed
         return counter
 
     def trim(self, ts_min, ts_max):
@@ -420,8 +432,7 @@ class EventList(TimeSeries):
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
         i._values = [SerializableDict.from_proto(x) for x in p.values]
-        if not bool(i):
-            raise ValueError("empty or invalid timeseries")
+        i.check_series()
         return i
 
 
@@ -440,14 +451,14 @@ class SerializableDict(dict):
     def from_proto(cls, p):
         i = cls()
         for pair in p.pairs:
-            i[pair.key] = pair.value
+            i[pair.key] = json.loads(pair.value)
         return i
 
     def to_proto(self):
         d = Dictionary()
         pairs = []
         for k, v in self.items():
-            pairs.append(Pair(key=str(k), value=str(v)))
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
@@ -462,3 +473,98 @@ class SerializableDict(dict):
     def from_msgpack(cls, b):
         i = cls(dict(msgpack.unpackb(b, raw=False)))
         return i
+
+    def to_dict(self):
+        return dict(self)
+
+
+class SerializableNamespaceDict(object):
+    def __init__(self, namespace, data):
+        if len(namespace) < 2:
+            raise ValueError("Namespace should be at least 2 chars")
+
+        if len(data) < 1:
+            raise ValueError("Empty dict")
+
+        self.namespace = namespace
+        self.data = SerializableDict(data)
+
+    @classmethod
+    def from_proto_bytes(cls, b):
+        d = MetaDataDict()
+        d.ParseFromString(b)
+        return cls.from_proto(d)
+
+    @classmethod
+    def from_proto(cls, p):
+        d = {}
+        for pair in p.pairs:
+            d[pair.key] = json.loads(pair.value)
+        return cls(p.namespace, d)
+
+    def to_proto(self):
+        d = MetaDataDict(namespace=self.namespace)
+        pairs = []
+        for k, v in self.data.items():
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
+        d.pairs.extend(pairs)
+        return d
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()
+
+    def to_dict(self):
+        return self.data.to_dict()
+
+
+class ReaderActivityItem(object):
+    def __init__(self, day_hour, reader_id, device_ids):
+        self.day_hour = day_hour
+        self.reader_id = reader_id
+        self.device_ids = list(device_ids)
+
+    @classmethod
+    def from_proto_bytes(cls, b):
+        d = ReaderActivity()
+        d.ParseFromString(b)
+        return cls.from_proto(d)
+
+    @classmethod
+    def from_proto(cls, p):
+        return cls(p.day_hour, p.reader_id, p.device_ids)
+
+    def to_proto(self):
+        d = ReaderActivity(day_hour=self.day_hour, reader_id=self.reader_id,
+                           device_ids=list(self.device_ids))
+        return d
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()
+
+
+class DeviceActivityItem(object):
+    def __init__(self, day_hour, device_id, counter):
+        self.day_hour = day_hour
+        self.device_id = device_id
+        self.counter = int(counter)
+
+    @classmethod
+    def from_proto_bytes(cls, b):
+        d = DeviceActivity()
+        d.ParseFromString(b)
+        return cls.from_proto(d)
+
+    @classmethod
+    def from_proto(cls, p):
+        return cls(p.day_hour, p.device_id, p.counter)
+
+    def to_proto(self):
+        d = DeviceActivity(day_hour=self.day_hour, device_id=self.device_id,
+                           counter=int(self.counter))
+        return d
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()

@@ -251,7 +251,7 @@ class ActivityStub(object):
     self.getReader = channel.unary_unary(
         '/Activity/getReader',
         request_serializer=cdb__pb2.ReaderActivityRequest.SerializeToString,
-        response_deserializer=cdb__pb2.ActivityResponse.FromString,
+        response_deserializer=cdb__pb2.DeviceActivityResponse.FromString,
         )
     self.increment = channel.unary_unary(
         '/Activity/increment',
@@ -312,7 +312,7 @@ def add_ActivityServicer_to_server(servicer, server):
       'getReader': grpc.unary_unary_rpc_method_handler(
           servicer.getReader,
           request_deserializer=cdb__pb2.ReaderActivityRequest.FromString,
-          response_serializer=cdb__pb2.ActivityResponse.SerializeToString,
+          response_serializer=cdb__pb2.DeviceActivityResponse.SerializeToString,
       ),
       'increment': grpc.unary_unary_rpc_method_handler(
           servicer.increment,
