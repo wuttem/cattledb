@@ -4,7 +4,11 @@ from setuptools.command.test import test as TestCommand
 import sys
 import os
 import re
-from pip.req import parse_requirements
+
+try: # for pip >= 10
+    from pip._internal.req import parse_requirements
+except ImportError: # for pip <= 9.0.3
+    from pip.req import parse_requirements
 
 try:
     from setuptools import setup
@@ -46,11 +50,11 @@ class PyTest(TestCommand):
 setup(
     name='cattledb',
     version=VERSION,
-    description="Storing Anthill data",
+    description="Device Data Store on BigTable",
     long_description=readme,
     author="Matthias Wutte",
-    author_email='matthias.wutte@smaxtec.com',
-    url='https://anthill.smaxtec.com',
+    author_email='matthias.wutte@gmail.com',
+    url='https://github.com/wuttem',
     packages=[
         'cattledb',
     ],

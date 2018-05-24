@@ -32,6 +32,7 @@ class SeriesType(Enum):
     FLOATSERIES = 1
     DICTSERIES = 2
 
+
 class TimeSeries(object):
     DEFAULT_TYPE = SeriesType.FLOATSERIES
     TYPE_WRAPPER = Point

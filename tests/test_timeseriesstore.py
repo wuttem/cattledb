@@ -11,6 +11,7 @@ import datetime
 
 from cattledb.storage import Connection
 from cattledb.storage.models import TimeSeries
+from cattledb.settings import AVAILABLE_METRICS
 
 
 class TimeSeriesStorageTest(unittest.TestCase):
@@ -31,7 +32,7 @@ class TimeSeriesStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(project_id='test-system', instance_id='test')
+        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
         db.create_tables(silent=True)
         db.timeseries._create_metric("ph", silent=True)
         db.timeseries._create_metric("act", silent=True)
@@ -84,7 +85,7 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(ph[-1].ts, 501 * 600)
 
     def test_delete(self):
-        db = Connection(project_id='test-system', instance_id='test')
+        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
         db.create_tables(silent=True)
         db.timeseries._create_metric("ph", silent=True)
 

@@ -133,3 +133,23 @@ def daily_timestamps(from_ts, to_ts):
     while last <= to_ts:
         yield last
         last = ts_daily_left(last + 24*60*60 + 1000)  # Add 1000 for correct behaviour in case of time diffs
+
+
+def get_metric_name_lookup(metrics):
+    return {
+        m.name: m for m in metrics
+    }
+
+
+def get_metric_id_lookup(metrics):
+    return {
+        m.id: m for m in metrics
+    }
+
+
+def get_metric_names(metrics):
+    return [m.name for m in metrics]
+
+
+def get_metric_ids(metrics):
+    return [m.id for m in metrics]

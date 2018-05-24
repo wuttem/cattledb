@@ -37,5 +37,4 @@ class MetaDataStorageTest(unittest.TestCase):
         db.metadata.put_metadata("reader", "1", "note2", {"föö": "bää"})
 
         res = db.metadata.get_metadata("reader", "1")
-        print(res)
         self.assertEqual(len(res), 2)

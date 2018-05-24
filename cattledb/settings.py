@@ -3,6 +3,42 @@
 
 import logging
 import os
+from enum import Enum
+from collections import namedtuple
+
+MetricDefinition = namedtuple('MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
+
+
+class MetricType(Enum):
+    FLOATSERIES = 1
+    DICTSERIES = 2
+
+
+class Resolution(Enum):
+    SECOND = 1
+    MINUTE = 2
+    HOUR = 3
+
+
+AVAILABLE_METRICS = [
+    MetricDefinition("test", "test", MetricType.FLOATSERIES, True, True, Resolution.SECOND),
+
+    # Raw Metrics
+    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+
+    # Stage 1
+    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("act", "act", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE)
+]
 
 
 class BaseConfig(object):
@@ -35,6 +71,7 @@ class BaseConfig(object):
         }
     }
 
+    METRICS = AVAILABLE_METRICS
 
 class DevelopmentConfig(BaseConfig):
     pass
@@ -61,14 +98,22 @@ available_configs = {
 }
 
 
-# def includeEnvironmentVars(config):
-#     for key, value in os.environ.iteritems():
-#         if key.upper().startswith("ANTHILLCONTROL_") and key.upper() != "ANTHILLCONTROL_CONFIGURATION":
-#             new_key = key.upper().replace("ANTHILLCONTROL_", "")
-#             if value.upper() == "TRUE":
-#                 new_value = True
-#             elif value.upper() == "FALSE":
-#                 new_value = False
-#             else:
-#                 new_value = value
-#             setattr(config, new_key, new_value)
+AVAILABLE_METRICS = [
+    MetricDefinition("test", "test", MetricType.FLOATSERIES, True, True, Resolution.SECOND),
+
+    # Raw Metrics
+    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+
+    # Stage 1
+    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("act", "act", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
+    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE)
+]

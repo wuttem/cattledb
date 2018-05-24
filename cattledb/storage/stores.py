@@ -14,10 +14,11 @@ from google.cloud.bigtable.column_family import MaxVersionsGCRule
 from google.cloud import happybase
 from google.cloud.happybase.batch import Batch
 
-from .helper import from_ts, daily_timestamps
+from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names
 from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
-from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
+
+# from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
 
 
 logger = logging.getLogger(__name__)
@@ -265,7 +266,6 @@ class ActivityStore(object):
         if self.connection_object.read_only:
             raise RuntimeError("Cannot execute incr_activity in readonly mode")
 
-        # todo check timestamp
         if not (time.time() - 3*365*24*60*60) < timestamp < (time.time() + 30*24*60*60):
             raise ValueError("timestamp out of activity window -3y +30d")
 
@@ -390,6 +390,10 @@ class TimeSeriesStore(object):
         self.connection_object = connection_object
         self.connection_pool = connection_object.pool
 
+        self.METRIC_NAME_LOOKUP = get_metric_name_lookup(self.connection_object.metrics)
+        self.METRIC_NAMES = get_metric_names(self.connection_object.metrics)
+        self.METRIC_IDS = get_metric_ids(self.connection_object.metrics)
+
     def table(self, connection):
         return self.connection_object.get_table(self.TABLENAME, connection=connection)
 
@@ -406,12 +410,12 @@ class TimeSeriesStore(object):
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     def _create_metric(self, metric_name, silent=False):
-        if metric_name in METRIC_NAMES:
-            metric_id = METRIC_NAME_LOOKUP[metric_name].id
-        elif metric_name in METRIC_IDS:
+        if metric_name in self.METRIC_NAMES:
+            metric_id = self.METRIC_NAME_LOOKUP[metric_name].id
+        elif metric_name in self.METRIC_IDS:
             metric_id = metric_name
         else:
-            raise KeyError("metric {} not known (add it to timeseries settings)".format(metric_name))
+            raise KeyError("metric {} not known (add it to settings)".format(metric_name))
 
         i = self.connection_object.get_admin_instance()
         t = i.table(self.connection_object.table_with_prefix(self.TABLENAME))
@@ -425,7 +429,7 @@ class TimeSeriesStore(object):
         logger.warning("CREATE CF: Created Family: {}".format(metric_id))
 
     def _create_all_metrics(self):
-        to_create = [m.id for m in METRIC_NAME_LOOKUP.values()]
+        to_create = [m.id for m in self.METRIC_NAME_LOOKUP.values()]
         logger.warning("Performing CREATE CF ALL: this might take a minute")
 
         i = self.connection_object.get_admin_instance()
@@ -456,10 +460,9 @@ class TimeSeriesStore(object):
         row_key = "{}#{}".format(base_key, reverse_day_ts)
         return row_key
 
-    @classmethod
-    def get_metric_object(cls, metric_name):
-        if metric_name in METRIC_NAMES:
-            return METRIC_NAME_LOOKUP[metric_name]
+    def get_metric_object(self, metric_name):
+        if metric_name in self.METRIC_NAMES:
+            return self.METRIC_NAME_LOOKUP[metric_name]
         raise KeyError("metric {} not known".format(metric_name))
 
     def insert_timeseries(self, ts):
@@ -773,7 +776,6 @@ class EventStore(object):
         timer = time.time()
 
         row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        print(row_keys)
 
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)

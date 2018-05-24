@@ -12,7 +12,8 @@ logger = logging.getLogger(__name__)
 
 
 class Connection(object):
-    def __init__(self, project_id, instance_id, read_only=False, pool_size=8, table_prefix="cdb", credentials=None):
+    def __init__(self, project_id, instance_id, read_only=False, pool_size=8, table_prefix="cdb",
+                 credentials=None, metric_definition=None):
         self.project_id = project_id
         self.instance_id = instance_id
         self.read_only = read_only
@@ -24,6 +25,10 @@ class Connection(object):
         self.current_tables = None
         self.pool = happybase.ConnectionPool(pool_size, instance=self.instance)
         self.stores = {}
+
+        self.metrics = []
+        if metric_definition is not None:
+            self.metrics += metric_definition
 
         # Register Default Data Stores
         from .stores import TimeSeriesStore
@@ -43,7 +48,7 @@ class Connection(object):
         if self.read_only:
             raise RuntimeError("Cannot create admin instance in readonly mode")
         if self.admin_instance is None:
-            self.admin_instance = bigtable.Client(project=self.project_id, 
+            self.admin_instance = bigtable.Client(project=self.project_id,
                                                   admin=True).instance(self.instance_id)
         return self.admin_instance
 
