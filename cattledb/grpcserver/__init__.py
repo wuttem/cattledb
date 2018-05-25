@@ -34,6 +34,7 @@ def create_server(config):
     db_connection = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
                                pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
                                metric_definition=metrics)
+    server.db = db_connection
 
     from .services import TimeSeriesServicer
     ts_store = TimeSeriesServicer(db_connection)

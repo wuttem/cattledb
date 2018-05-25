@@ -34,7 +34,7 @@ class AsyncDB(object):
     async def get(self, key, metrics, from_dt, to_dt):
         return await self.loop.run_in_executor(self.pool, self.db.get_timeseries, key, metrics, from_dt, to_dt)
 
-    async def get_last(self, key, metrics, count=1, max_days=365):
+    async def get_last(self, key, metrics, count=1, max_days=180):
         return await self.loop.run_in_executor(self.pool, self.db.get_last_values, key, metrics, count, max_days)
 
     async def get_single(self, key, metric, from_dt, to_dt):

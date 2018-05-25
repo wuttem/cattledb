@@ -129,7 +129,7 @@ class TimeSeriesServicer(TimeSeriesServicer):
         if request.max_days:
             max_days = int(request.max_days)
         else:
-            max_days = 365
+            max_days = 180
 
         ts_list = self.db.timeseries.get_last_values(request.key, request.metrics, count=count, max_days=max_days, max_ts=max_ts)
         l = FloatTimeSeriesList()
@@ -362,7 +362,7 @@ class EventsServicer(EventsServicer):
         if request.max_days:
             max_days = int(request.max_days)
         else:
-            max_days = 365
+            max_days = 180
 
         ts = self.db.events.get_last_events(request.key, request.name, count=count, max_days=max_days, max_ts=max_ts)
         return ts.to_proto()

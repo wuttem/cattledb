@@ -544,6 +544,17 @@ class ReaderActivityItem(object):
         p = self.to_proto()
         return p.SerializeToString()
 
+    def to_dict(self):
+        return {"day_hour": self.day_hour_dt, "reader_id": self.reader_id, "device_ids": self.device_ids}
+
+    @property
+    def day_hour_dt(self):
+        y = int(self.day_hour[0:4])
+        m = int(self.day_hour[4:6])
+        d = int(self.day_hour[6:8])
+        h = int(self.day_hour[8:10])
+        return pendulum.datetime(y, m, d, h)
+
 
 class DeviceActivityItem(object):
     def __init__(self, day_hour, device_id, counter):
@@ -569,3 +580,14 @@ class DeviceActivityItem(object):
     def to_proto_bytes(self):
         p = self.to_proto()
         return p.SerializeToString()
+
+    def to_dict(self):
+        return {"day_hour": self.day_hour_dt, "device_id": self.device_id, "counter": self.counter}
+
+    @property
+    def day_hour_dt(self):
+        y = int(self.day_hour[0:4])
+        m = int(self.day_hour[4:6])
+        d = int(self.day_hour[6:8])
+        h = int(self.day_hour[8:10])
+        return pendulum.datetime(y, m, d, h)

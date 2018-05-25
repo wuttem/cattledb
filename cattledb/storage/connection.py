@@ -67,6 +67,9 @@ class Connection(object):
         for s in self.stores.values():
             s._create_tables(silent=silent)
 
+    def create_all_metrics(self):
+        self.timeseries._create_all_metrics()
+
 
     # Table Access Methods
     def get_table(self, table_id, connection):

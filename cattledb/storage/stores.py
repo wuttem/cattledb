@@ -541,7 +541,7 @@ class TimeSeriesStore(object):
     def get_single_timeseries(self, key, metric, from_ts, to_ts):
         return self.get_timeseries(key, [metric], from_ts, to_ts)[0]
 
-    def get_last_values(self, key, metrics, count=1, max_days=365, max_ts=None):
+    def get_last_values(self, key, metrics, count=1, max_days=180, max_ts=None):
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
 
@@ -723,9 +723,9 @@ class EventStore(object):
         return events
 
     def get_last_event(self, key, name):
-        return self.get_last_events(key, name, count=1, max_days=365)
+        return self.get_last_events(key, name, count=1, max_days=180)
 
-    def get_last_events(self, key, name, count=1, max_days=365, max_ts=None):
+    def get_last_events(self, key, name, count=1, max_days=180, max_ts=None):
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
 
