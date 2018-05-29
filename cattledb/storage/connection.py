@@ -3,12 +3,20 @@
 
 import logging
 import time
+import os
 
 from google.cloud import bigtable
 from google.cloud import happybase
+#from google.oauth2 import service_account
+import google.auth
 
 
 logger = logging.getLogger(__name__)
+
+
+class EmulatorCreds(google.auth.credentials.Credentials):
+    def refresh(self, request):
+        pass
 
 
 class Connection(object):
@@ -18,8 +26,16 @@ class Connection(object):
         self.instance_id = instance_id
         self.read_only = read_only
         self.table_prefix = table_prefix
+        self.credentials = credentials
+
+        # self.credentials, project = google.auth.default()
+        # credentials = service_account.Credentials.from_service_account_file('/path/to/key.json')
+        bigtable_emu = os.environ.get('BIGTABLE_EMULATOR_HOST', None)
+        if bigtable_emu:
+            self.credentials = EmulatorCreds()
+
         self.client = bigtable.Client(project=self.project_id, admin=False,
-                                      read_only=self.read_only)
+                                      read_only=self.read_only, credentials=self.credentials)
         self.instance = self.client.instance(self.instance_id)
         self.admin_instance = None
         self.current_tables = None
@@ -48,8 +64,8 @@ class Connection(object):
         if self.read_only:
             raise RuntimeError("Cannot create admin instance in readonly mode")
         if self.admin_instance is None:
-            self.admin_instance = bigtable.Client(project=self.project_id,
-                                                  admin=True).instance(self.instance_id)
+            self.admin_instance = bigtable.Client(project=self.project_id, admin=True,
+                                                  credentials=self.credentials).instance(self.instance_id)
         return self.admin_instance
 
     def register_store(self, store):

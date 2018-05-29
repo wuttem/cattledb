@@ -229,7 +229,7 @@ class TimeSeries(object):
         elif isinstance(dt, float):
             timestamp = int(dt)
             offset = 0
-        elif isinstance(dt, pendulum.Pendulum):
+        elif isinstance(dt, pendulum.DateTime):
             timestamp = dt.int_timestamp
             offset = dt.offset
         elif isinstance(dt, datetime):

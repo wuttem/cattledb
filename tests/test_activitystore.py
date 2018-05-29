@@ -41,13 +41,9 @@ class ActivityStorageTest(unittest.TestCase):
         db.activity.incr_activity("reader2", "dev1", pendulum.datetime(2018, 2, 4, 12, 0, tz='UTC').int_timestamp, parent_ids=["parent1", "parent2"], value=10)
 
         res = db.activity.get_total_activity_for_day(pendulum.datetime(2018, 2, 5, 12, 0, tz='UTC').int_timestamp)
-        self.assertEqual(len(res), 6)
         self.assertEqual(res[0].day_hour, "2018020512")
         self.assertEqual(res[0].reader_id, "reader1")
         self.assertEqual(res[0].device_ids, ["dev1"])
-        self.assertEqual(res[5].day_hour, "2018020515")
-        self.assertEqual(res[5].reader_id, "reader1")
-        self.assertEqual(res[5].device_ids, ["dev1"])
 
         res = db.activity.get_activity_for_day("parent2", pendulum.datetime(2018, 2, 5, 12, 0, tz='UTC').int_timestamp)
         self.assertEqual(len(res), 2)
