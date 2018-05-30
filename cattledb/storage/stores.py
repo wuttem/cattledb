@@ -100,7 +100,7 @@ class MetaDataStore(object):
 
     def get_metadata_bulk(self, object_name, object_ids, keys=None, internal=False):
         row_keys = [self.get_row_key(object_name, id).encode("utf-8") for id in object_ids]
-        columns = "i:" if internal else "p:"
+        columns = ["i:"] if internal else ["p:"]
 
         timer = time.time()
 
@@ -295,7 +295,7 @@ class ActivityStore(object):
 
         daily_ts =  daily_timestamps(from_ts, to_ts)
         row_keys = [self.get_row_key("t", ts, reader_id=reader_id).encode("utf-8") for ts in daily_ts]
-        columns = "c:"
+        columns = ["c:"]
 
         timer = time.time()
 
@@ -333,7 +333,7 @@ class ActivityStore(object):
     def get_activity_for_day(self, parent_id, day_ts):
         start_search_row = self.get_row_key(parent_id, day_ts).encode("utf-8")
         row_prefix = self.get_row_key(parent_id, day_ts).encode("utf-8")
-        columns = "c:"
+        columns = ["c:"]
 
         timer = time.time()
 
@@ -699,7 +699,7 @@ class EventStore(object):
         timer = time.time()
 
         row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        columns = "e:"
+        columns = ["e:"]
 
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
@@ -731,7 +731,7 @@ class EventStore(object):
 
         start_search_row = self.get_row_key(key, name, max_ts).encode("utf-8")
         row_prefix = "{}#{}#".format(key, name).encode("utf-8")
-        columns = "e:"
+        columns = ["e:"]
 
         timer = time.time()
 
