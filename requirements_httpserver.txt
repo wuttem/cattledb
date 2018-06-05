@@ -1,0 +1,5 @@
+sanic
+google-cloud-happybase==0.26.0
+google-cloud-bigtable==0.26.0
+google-cloud-core==0.26.0
+sanic_compress

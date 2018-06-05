@@ -2,6 +2,8 @@
 
 Fast BigTable Time Series Database Implementation
 
+TODO: Add blinker signals
+
 ## Run Docker Emulator for Tests on Machine
 
 ```bash

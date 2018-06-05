@@ -8,7 +8,6 @@ import grpc
 from concurrent import futures
 
 from .cdb_pb2_grpc import add_TimeSeriesServicer_to_server, add_EventsServicer_to_server, add_MetaDataServicer_to_server, add_ActivityServicer_to_server
-from ..storage import Connection
 
 
 def setup_logging(config):
@@ -19,6 +18,7 @@ def setup_logging(config):
 
 
 def create_server(config):
+    from ..storage import Connection
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
     # Setup DB

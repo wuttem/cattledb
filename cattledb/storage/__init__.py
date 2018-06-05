@@ -6,8 +6,6 @@ import logging
 import asyncio
 import concurrent.futures
 
-from .connection import Connection as Connection
-
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +13,7 @@ logger = logging.getLogger(__name__)
 class AsyncDB(object):
     def __init__(self, project_id, instance_id, loop=None, read_only=False, pool_size=8, table_prefix="cdb",
                  credentials=None, metric_definition=None):
+        from .connection import Connection as Connection
         self.db = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
                              pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
                              metric_definition=metric_definition)

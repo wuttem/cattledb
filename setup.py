@@ -26,13 +26,18 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 # parse_requirements() returns generator of pip.req.InstallRequirement objects
 install_reqs = parse_requirements('requirements.txt', session=False)
+server_reqs = parse_requirements('requirements_server.txt', session=False)
+httpserver_reqs = parse_requirements('requirements_httpserver.txt', session=False)
 
 # reqs is a list of requirement
 # e.g. ['django==1.5.1', 'mezzanine==1.4.6']
 reqs = [str(ir.req) for ir in install_reqs]
+s_reqs = [str(ir.req) for ir in server_reqs]
+hs_reqs = [str(ir.req) for ir in httpserver_reqs]
 
-test_requirements = [
-    "pytest"
+test_reqs = [
+    "pytest",
+    "mock"
 ]
 
 
@@ -47,6 +52,7 @@ class PyTest(TestCommand):
         errcode = pytest.main(self.test_args)
         sys.exit(errcode)
 
+
 setup(
     name='cattledb',
     version=VERSION,
@@ -58,6 +64,10 @@ setup(
     packages=[
         'cattledb',
     ],
+    extras_require={
+        'server':  s_reqs,
+        'httpserver': hs_reqs
+    },
     package_dir={'cattledb':
                  'cattledb'},
     include_package_data=True,
@@ -65,8 +75,8 @@ setup(
     zip_safe=False,
     keywords='cattledb',
     test_suite='tests',
-    tests_require=test_requirements,
+    tests_require=test_reqs,
     cmdclass={'test': PyTest},
-    entry_points={'console_scripts':
-                  ['run-the-app = cattledb.__main__:main']}
+    # entry_points={'console_scripts':
+    #               ['run-the-app = cattledb.__main__:main']}
 )
