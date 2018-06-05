@@ -18,7 +18,7 @@ def setup_logging(config):
 
 
 def create_server(config):
-    from ..storage import Connection
+    from ..storage.connection import Connection
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
     # Setup DB

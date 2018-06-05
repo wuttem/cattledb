@@ -9,7 +9,7 @@ import os
 import datetime
 
 
-from cattledb.storage import Connection
+from cattledb.storage.connection import Connection
 
 
 class MetaDataStorageTest(unittest.TestCase):
