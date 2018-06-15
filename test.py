@@ -1,6 +1,6 @@
 import os
 import datetime
-from cattledb.storage import Connection
+from cattledb.storage.connection import Connection
 from cattledb.storage.models import TimeSeries
 from cattledb.storage.helper import to_ts
 

@@ -7,7 +7,7 @@ from sanic import Sanic
 from sanic_compress import Compress
 
 from ..settings import available_configs
-from ..storage import AsyncDB
+from ..storage.asyncdb import AsyncDB
 
 
 def setup_logging(config):

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # coding: utf8
 
+import sys
 from enum import Enum
 from collections import MutableSequence
 from collections import namedtuple
@@ -101,7 +102,10 @@ class TimeSeries(object):
 
     def check_sorted(self):
         it = iter(self._timestamps)
-        it.__next__()
+        if (sys.version_info > (3, 0)):
+            it.__next__()
+        else:
+            it.next()
         assert all(b >= a for a, b in zip(self._timestamps, it))
 
     def to_hash(self):
