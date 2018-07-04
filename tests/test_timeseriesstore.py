@@ -7,6 +7,8 @@ import logging
 import pendulum
 import os
 import datetime
+import mock
+import time
 
 
 from cattledb.storage.connection import Connection
@@ -92,14 +94,18 @@ class TimeSeriesStorageTest(unittest.TestCase):
         base = datetime.datetime.now()
         data_list = [(base - datetime.timedelta(minutes=10*x), random.random() * 5) for x in range(0, 144*5)]
         ts = TimeSeries("device", "ph", values=data_list)
-
-        db.timeseries.insert_timeseries(ts)
-
-        # get
         from_pd = pendulum.instance(data_list[-1][0])
         from_ts = from_pd.int_timestamp
         to_pd = pendulum.instance(data_list[0][0])
         to_ts = to_pd.int_timestamp
+
+        #delete all data just in case
+        r = db.timeseries.delete_timeseries("device", ["ph"], from_ts-24*60*60, to_ts+24*60*60)
+
+        #insert
+        db.timeseries.insert_timeseries(ts)
+
+        # get
         r = db.timeseries.get_single_timeseries("device", "ph", from_ts, to_ts)
         a = list(r.all())
         self.assertEqual(len(a), 144 * 5)
@@ -117,6 +123,33 @@ class TimeSeriesStorageTest(unittest.TestCase):
         r = db.timeseries.delete_timeseries("device", ["ph"], from_ts, to_ts)
         self.assertGreaterEqual(r, 5)
 
+
+    def test_signal(self):
+        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
+        db.create_tables(silent=True)
+        db.timeseries._create_metric("temp", silent=True)
+
+        d = [[int(time.time()), 11.1]]
+        data = [{"key": "sensor15",
+                 "metric": "ph",
+                 "data": d}]
+
+        from blinker import signal
+        my_put_func = mock.MagicMock(spec={})
+        s = signal("timeseries.put")
+        s.connect(my_put_func)
+        from blinker import signal
+        my_get_func = mock.MagicMock(spec={})
+        s = signal("timeseries.get")
+        s.connect(my_get_func)
+
+        db.timeseries.insert_bulk(data)
+        r = db.timeseries.get_single_timeseries("sensor15", "ph", 0, 500*600-1)
+
+        self.assertEqual(len(my_put_func.call_args_list), 1)
+        self.assertIn("info", my_put_func.call_args_list[0][1])
+        self.assertEqual(len(my_get_func.call_args_list), 1)
+        self.assertIn("ino", my_get_func.call_args_list[0][1])
 
     # def test_cassandra_rewrite(self):
     #     cassandra_host = os.getenv('CASSANDRA_HOST', 'localhost')

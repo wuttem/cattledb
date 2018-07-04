@@ -278,8 +278,13 @@ class MetaDataServicer(MetaDataServicer):
         else:
             namespaces = list(request.namespaces)
 
+        if not request.internal:
+            internal = False
+        else:
+            internal = list(request.internal)
+
         res = MetaDataResponse(object_name=request.object_name, object_key=request.object_key)
-        md = self.db.metadata.get_metadata(request.object_name, request.object_key, keys=namespaces)
+        md = self.db.metadata.get_metadata(request.object_name, request.object_key, keys=namespaces, internal=internal)
 
         proto_dicts = []
         if md is not None:
@@ -297,12 +302,17 @@ class MetaDataServicer(MetaDataServicer):
             context.set_details('Invalid Request')
             return PutResult()
 
+        if not request.internal:
+            internal = False
+        else:
+            internal = list(request.internal)
+
         metas = []
         for item in request.data:
             d = SerializableNamespaceDict.from_proto(item)
             metas.append(MetaDataItem(request.object_name, request.object_key, d.namespace, d.to_dict()))
 
-        res = self.db.metadata.put_metadata_items(metas)
+        res = self.db.metadata.put_metadata_items(metas, internal=internal)
         return PutResult(code=200, counter=int(res), message="success")
 
 

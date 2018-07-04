@@ -146,6 +146,7 @@ message MetaDataRequest {
     string object_name = 1;
     string object_key = 2;
     repeated string namespaces = 3;
+    bool internal = 4;
 }
 
 
@@ -160,6 +161,7 @@ message MetaDataPost {
     string object_name = 1;
     string object_key = 2;
     repeated MetaDataDict data = 3;
+    bool internal = 4;
 }
 
 

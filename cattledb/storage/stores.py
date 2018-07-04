@@ -7,6 +7,7 @@ import six
 import struct
 import json
 
+from blinker import signal
 from collections import namedtuple, defaultdict
 from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
@@ -54,6 +55,9 @@ class MetaDataStore(object):
         cf2.create()
 
         tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
+        # emit after tables signal
+        after_tables = signal('metadata.after_tables')
+        after_tables.send(self)
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     @classmethod
@@ -74,16 +78,22 @@ class MetaDataStore(object):
 
         timer = time.time()
         res = []
+        row_keys = []
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             with Batch(dt) as b:
                 for i in items:
                     row_key = self.get_row_key(i.object_name, i.object_id)
+                    row_keys.append(row_key)
                     cn = "{}{}".format(column, i.key)
                     data = {cn: SerializableDict(i.data).to_msgpack()}
                     b.put(row_key, data)
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(items), "row_keys": row_keys, "timer": timer}
+        sig = signal('metadata.put')
+        sig.send(self, info=signal_payload)
         logger.info("PUT META: {} inserts in {}".format(len(items), timer))
         # print("PUT META: {} inserts in {}".format(len(items), timer))
         return len(items)
@@ -123,6 +133,10 @@ class MetaDataStore(object):
                 metadata.append(MetaDataItem(o_name, o_id, key, data))
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('metadata.get')
+        sig.send(self, info=signal_payload)
         logger.info("GET METADATA: {} rows in {}".format(len(row_keys), timer))
         # print("GET METADATA: {} rows in {}".format(len(row_keys), timer))
         return metadata
@@ -157,6 +171,9 @@ class ActivityStore(object):
         cf1.create()
 
         tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
+        # emit after tables signal
+        after_tables = signal('activity.after_tables')
+        after_tables.send(self)
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     @classmethod
@@ -282,6 +299,10 @@ class ActivityStore(object):
                 # res.append(dt.counter_inc(r, column.encode("utf-8"), value))
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('activity.incr')
+        sig.send(self, info=signal_payload)
         logger.info("INCR ACTIVITY: {}, {} incrs in {}".format(device_id, len(res), timer))
         # print("INCR ACTIVITY: {}, {} incrs in {}".format(device_id, len(res), timer))
         return res
@@ -320,6 +341,10 @@ class ActivityStore(object):
                 activitys[day_hour][p[1]] += int_value
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('activity.get')
+        sig.send(self, info=signal_payload)
         logger.info("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
         # print("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
         out = []
@@ -339,6 +364,7 @@ class ActivityStore(object):
 
         activitys = defaultdict(lambda: defaultdict(list))
         row_counter = 0
+        row_keys = []
 
         # Start scanning
         with self.connection_pool.connection() as conn:
@@ -355,6 +381,7 @@ class ActivityStore(object):
                 row_counter += 1
                 # Append to Activity
                 readout_id = row_key.decode("utf-8").split("#")[-1]
+                row_keys.append(row_key.decode("utf-8"))
                 day = self.reverse_day_key_to_day(row_key.decode("utf-8").split("#")[-2])
 
                 for k, value in data_dict.items():
@@ -368,6 +395,10 @@ class ActivityStore(object):
                     activitys[day_hour][readout_id].append(p[1])
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('activity.get')
+        sig.send(self, info=signal_payload)
         logger.info("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
         # print("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
         out = []
@@ -407,6 +438,10 @@ class TimeSeriesStore(object):
         table = i.table(table_name)
         table.create()
         tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
+        # emit after tables signal
+        after_tables = signal('timeseries.after_tables')
+        after_tables.send(self)
+
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     def _create_metric(self, metric_name, silent=False):
@@ -471,6 +506,7 @@ class TimeSeriesStore(object):
 
         assert bool(ts)
         metric_object = self.get_metric_object(ts.metric)
+        row_keys = []
         key = ts.key
         timer = time.time()
         with self.connection_pool.connection() as conn:
@@ -478,12 +514,17 @@ class TimeSeriesStore(object):
             with Batch(dt) as b:
                 for day, bucket in ts.daily_storage_buckets():
                     row_key = self.get_row_key(key, day)
+                    row_keys.append(row_key)
                     data = {}
                     for timestamp, val in bucket:
                         cn = "{}:{}".format(metric_object.id, timestamp)
                         data[cn] = val
                     b.put(row_key, data)
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('timeseries.put')
+        sig.send(self, info=signal_payload)
         logger.info("INSERT: {}.{}, {} points in {}".format(key, metric_object.name, len(ts), timer))
         # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
         return len(ts)
@@ -534,6 +575,10 @@ class TimeSeriesStore(object):
             out.append(t)
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('timeseries.get')
+        sig.send(self, info=signal_payload)
         logger.info("GET: {}.{}, {} points in {}".format(key, metrics, size, timer))
         # print("GET: {}.{}, {} points in {}".format(key, metrics, size, timer))
         return out
@@ -551,6 +596,7 @@ class TimeSeriesStore(object):
         columns = ["{}:".format(m.id) for m in metric_objects]
 
         timer = time.time()
+        row_keys = []
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
 
@@ -562,6 +608,8 @@ class TimeSeriesStore(object):
             # with row start
             res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
             for row_key, data_dict in res:
+                row_keys.append(row_key.decode("utf-8"))
+
                 # Break if we get another deviceid
                 if not row_key.startswith(row_prefix):
                     break
@@ -588,6 +636,10 @@ class TimeSeriesStore(object):
             out.append(t)
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('timeseries.last')
+        sig.send(self, info=signal_payload)
         logger.info("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
         # print("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
         return out
@@ -618,6 +670,10 @@ class TimeSeriesStore(object):
 
         timer = time.time() - timer
         count = len(row_keys)
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('timeseries.delete')
+        sig.send(self, info=signal_payload)
         logger.info("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
         # print("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
         return count
@@ -650,6 +706,11 @@ class EventStore(object):
         cf1.create()
 
         tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
+
+        # emit after tables signal
+        after_tables = signal('timeseries.after_tables')
+        after_tables.send(self)
+
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     @classmethod
@@ -675,17 +736,23 @@ class EventStore(object):
         key = event_list.key
 
         timer = time.time()
+        row_keys = []
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
             with Batch(dt) as b:
                 for day, bucket in event_list.daily_storage_buckets():
                     row_key = self.get_row_key(key, name, day)
+                    row_keys.append(row_key)
                     data = {}
                     for timestamp, val in bucket:
                         cn = "e:{}".format(timestamp)
                         data[cn] = val
                     b.put(row_key, data)
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('event.put')
+        sig.send(self, info=signal_payload)
         logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
         # print("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
         return len(event_list)
@@ -718,6 +785,10 @@ class EventStore(object):
         events.trim(from_ts, to_ts)
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('event.get')
+        sig.send(self, info=signal_payload)
         logger.info("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         # print("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         return events
@@ -734,6 +805,7 @@ class EventStore(object):
         columns = ["e:"]
 
         timer = time.time()
+        row_keys = []
 
         events = EventList(key, name)
         # Start scanning
@@ -745,6 +817,8 @@ class EventStore(object):
             res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
 
             for row_key, data_dict in res:
+                row_keys.append(row_key.decode("utf-8"))
+
                 # Break if we get another row prefix
                 if not row_key.startswith(row_prefix):
                     break
@@ -764,6 +838,10 @@ class EventStore(object):
         events.trim_count_newest(count)
 
         timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('event.last')
+        sig.send(self, info=signal_payload)
         logger.info("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         # print("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         return events
@@ -785,6 +863,10 @@ class EventStore(object):
 
         timer = time.time() - timer
         count = len(row_keys)
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        sig = signal('event.delete')
+        sig.send(self, info=signal_payload)
         logger.info("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
         # print("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
         return count
