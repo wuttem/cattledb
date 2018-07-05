@@ -86,6 +86,9 @@ class Connection(object):
     def create_all_metrics(self):
         self.timeseries._create_all_metrics()
 
+    def create_metric(self, metric_name, silent=False):
+        self.timeseries._create_metric(metric_name, silent=silent)
+
 
     # Table Access Methods
     def get_table(self, table_id, connection):

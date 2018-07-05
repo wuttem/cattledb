@@ -149,6 +149,8 @@ class CDBClient(object):
 
     def put_metadata(self, object_name, object_key, namespace, data):
         self.raise_on_read_only()
+        if not isinstance(data, dict):
+            raise ValueError("data should be a dict")
         d = SerializableNamespaceDict(namespace, data)
         req = cdb_pb2.MetaDataPost(object_name=object_name, object_key=object_key, data=[d.to_proto()])
         res = self.metadata.put(req)
