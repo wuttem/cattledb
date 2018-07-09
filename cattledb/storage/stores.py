@@ -91,10 +91,10 @@ class MetaDataStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(items), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(items), "row_keys": row_keys, "timer": timer, "method": "PUT"}
         sig = signal('metadata.put')
         sig.send(self, info=signal_payload)
-        logger.info("PUT META: {} inserts in {}".format(len(items), timer))
+        logger.info("PUT META: {} inserts in {}".format(len(items), timer), extra=signal_payload)
         # print("PUT META: {} inserts in {}".format(len(items), timer))
         return len(items)
 
@@ -134,10 +134,10 @@ class MetaDataStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "GET"}
         sig = signal('metadata.get')
         sig.send(self, info=signal_payload)
-        logger.info("GET METADATA: {} rows in {}".format(len(row_keys), timer))
+        logger.info("GET METADATA: {} rows in {}".format(len(row_keys), timer), extra=signal_payload)
         # print("GET METADATA: {} rows in {}".format(len(row_keys), timer))
         return metadata
 
@@ -300,10 +300,10 @@ class ActivityStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "PUT"}
         sig = signal('activity.incr')
         sig.send(self, info=signal_payload)
-        logger.info("INCR ACTIVITY: {}, {} incrs in {}".format(device_id, len(res), timer))
+        logger.info("INCR ACTIVITY: {}, {} incrs in {}".format(device_id, len(res), timer), extra=signal_payload)
         # print("INCR ACTIVITY: {}, {} incrs in {}".format(device_id, len(res), timer))
         return res
 
@@ -342,10 +342,10 @@ class ActivityStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "GET"}
         sig = signal('activity.get')
         sig.send(self, info=signal_payload)
-        logger.info("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
+        logger.info("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer), extra=signal_payload)
         # print("GET ACTIVITY: {} rows in {}".format(len(row_keys), timer))
         out = []
         for day_hour in sorted(activitys.keys()):
@@ -396,10 +396,10 @@ class ActivityStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
         sig = signal('activity.get')
         sig.send(self, info=signal_payload)
-        logger.info("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
+        logger.info("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer), extra=signal_payload)
         # print("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
         out = []
         for day_hour in sorted(activitys.keys()):
@@ -522,10 +522,10 @@ class TimeSeriesStore(object):
                     b.put(row_key, data)
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "PUT"}
         sig = signal('timeseries.put')
         sig.send(self, info=signal_payload)
-        logger.info("INSERT: {}.{}, {} points in {}".format(key, metric_object.name, len(ts), timer))
+        logger.info("INSERT: {}.{}, {} points in {}".format(key, metric_object.name, len(ts), timer), extra=signal_payload)
         # print("INSERT: {}.{}, {} points in {}".format(key, metric, len(ts), timer))
         return len(ts)
 
@@ -576,10 +576,10 @@ class TimeSeriesStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "GET"}
         sig = signal('timeseries.get')
         sig.send(self, info=signal_payload)
-        logger.info("GET: {}.{}, {} points in {}".format(key, metrics, size, timer))
+        logger.info("GET: {}.{}, {} points in {}".format(key, metrics, size, timer), extra=signal_payload)
         # print("GET: {}.{}, {} points in {}".format(key, metrics, size, timer))
         return out
 
@@ -637,10 +637,10 @@ class TimeSeriesStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
         sig = signal('timeseries.last')
         sig.send(self, info=signal_payload)
-        logger.info("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
+        logger.info("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer), extra=signal_payload)
         # print("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
         return out
 
@@ -671,10 +671,10 @@ class TimeSeriesStore(object):
         timer = time.time() - timer
         count = len(row_keys)
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "DELETE"}
         sig = signal('timeseries.delete')
         sig.send(self, info=signal_payload)
-        logger.info("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
+        logger.info("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer), extra=signal_payload)
         # print("DELETE: {}.{}, {} days in {}".format(key, metrics, count, timer))
         return count
 
@@ -750,10 +750,10 @@ class EventStore(object):
                     b.put(row_key, data)
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "PUT"}
         sig = signal('event.put')
         sig.send(self, info=signal_payload)
-        logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
+        logger.info("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer), extra=signal_payload)
         # print("INSERT EVENTS: {}.{}, {} points in {}".format(key, name, len(event_list), timer))
         return len(event_list)
 
@@ -786,10 +786,10 @@ class EventStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "GET"}
         sig = signal('event.get')
         sig.send(self, info=signal_payload)
-        logger.info("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        logger.info("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer), extra=signal_payload)
         # print("GET EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         return events
 
@@ -839,10 +839,10 @@ class EventStore(object):
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
         sig = signal('event.last')
         sig.send(self, info=signal_payload)
-        logger.info("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
+        logger.info("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer), extra=signal_payload)
         # print("SCAN EVENTS: {}.{}, {} points in {}".format(key, name, len(events), timer))
         return events
 
@@ -864,9 +864,9 @@ class EventStore(object):
         timer = time.time() - timer
         count = len(row_keys)
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer}
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "DELETE"}
         sig = signal('event.delete')
         sig.send(self, info=signal_payload)
-        logger.info("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
+        logger.info("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer), extra=signal_payload)
         # print("DELETE EVENTS: {}.{}, {} days in {}".format(key, name, count, timer))
         return count
