@@ -28,6 +28,8 @@ from .helper import ts_monthly_left, ts_monthly_right
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 
+TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
+
 
 class SeriesType(Enum):
     FLOATSERIES = 1
@@ -233,6 +235,9 @@ class TimeSeries(object):
         elif isinstance(dt, float):
             timestamp = int(dt)
             offset = 0
+        elif isinstance(dt, TimestampWithOffset):
+            timestamp = int(dt.ts)
+            offset = int(dt.offset)
         elif isinstance(dt, pendulum.DateTime):
             timestamp = dt.int_timestamp
             offset = dt.offset
