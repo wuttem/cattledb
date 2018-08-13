@@ -10,10 +10,11 @@ from ..storage.models import TimeSeries, EventList, SerializableNamespaceDict, R
 
 
 class CDBClient(object):
-    def __init__(self, endpoint=None, read_only=False):
+    def __init__(self, endpoint=None, read_only=False, options=None):
         self.read_only = read_only
+        self.options = options
         if endpoint is not None:
-            self.setup(endpoint, read_only)
+            self.setup(endpoint, read_only, options)
         #self.channel = grpc.insecure_channel(endpoint)
         #self.setup()
         #self.timeseries = cdb_pb2_grpc.TimeSeriesStub(self.channel)
@@ -21,9 +22,12 @@ class CDBClient(object):
         #self.metadata = cdb_pb2_grpc.MetaDataStub(self.channel)
         #self.activity = cdb_pb2_grpc.ActivityStub(self.channel)
 
-    def setup(self, endpoint, read_only=False):
+    def setup(self, endpoint, read_only=False, options=None):
         self.read_only = read_only
-        self.channel = grpc.insecure_channel(endpoint)
+        if options is not None:
+            self.channel = grpc.insecure_channel(endpoint)
+        else:
+            self.channel = grpc.insecure_channel(endpoint, options)
         try:
             grpc.channel_ready_future(self.channel).result(timeout=10)
         except grpc.FutureTimeoutError:
