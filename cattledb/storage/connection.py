@@ -6,7 +6,7 @@ import time
 import os
 
 from google.cloud import bigtable
-from google.cloud import happybase
+import happybase
 #from google.oauth2 import service_account
 import google.auth
 

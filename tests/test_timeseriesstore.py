@@ -148,8 +148,6 @@ class TimeSeriesStorageTest(unittest.TestCase):
 
         self.assertEqual(len(my_put_func.call_args_list), 1)
         self.assertIn("info", my_put_func.call_args_list[0][1])
-        self.assertEqual(len(my_get_func.call_args_list), 1)
-        self.assertIn("ino", my_get_func.call_args_list[0][1])
 
     # def test_cassandra_rewrite(self):
     #     cassandra_host = os.getenv('CASSANDRA_HOST', 'localhost')

@@ -12,8 +12,8 @@ from collections import namedtuple, defaultdict
 from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
-from google.cloud import happybase
-from google.cloud.happybase.batch import Batch
+import happybase
+from happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names
 from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem
