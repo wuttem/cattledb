@@ -295,8 +295,8 @@ class ActivityStore(object):
             dt = self.table(conn)
             for r in row_keys:
                 # bugfix
-                res.append(self.counter_inc(dt, r, column, value))
-                # res.append(dt.counter_inc(r, column.encode("utf-8"), value))
+                # res.append(self.counter_inc(dt, r, column, value))
+                res.append(dt.counter_inc(r, column.encode("utf-8"), value))
 
         timer = time.time() - timer
         # emit signal
