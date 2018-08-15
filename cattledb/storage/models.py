@@ -534,6 +534,10 @@ class ReaderActivityItem(object):
         self.reader_id = reader_id
         self.device_ids = list(device_ids)
 
+    def __repr__(self):
+        return "<{}.{}: {}>".format(
+            self.reader_id, self.day_hour, self.device_ids)
+
     @classmethod
     def from_proto_bytes(cls, b):
         d = ReaderActivity()
@@ -570,6 +574,10 @@ class DeviceActivityItem(object):
         self.day_hour = day_hour
         self.device_id = device_id
         self.counter = int(counter)
+
+    def __repr__(self):
+        return "<{}.{}: {}>".format(
+            self.device_id, self.day_hour, self.counter)
 
     @classmethod
     def from_proto_bytes(cls, b):

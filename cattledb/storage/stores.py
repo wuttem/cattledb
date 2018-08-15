@@ -323,7 +323,8 @@ class ActivityStore(object):
         activitys = defaultdict(lambda: defaultdict(int))
         with self.connection_pool.connection() as conn:
             dt = self.table(conn)
-            res = dt.rows(row_keys, columns)
+            res = [(r, dt.row(r, columns)) for r in row_keys]
+            #res = dt.rows(row_keys, columns)
 
         for row_key, data_dict in res:
             day = self.reverse_day_key_to_day(row_key.decode("utf-8").split("#")[-2])
