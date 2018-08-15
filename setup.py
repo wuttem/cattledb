@@ -72,6 +72,7 @@ setup(
                  'cattledb'},
     include_package_data=True,
     install_requires=reqs,
+    dependency_links=['git+https://github.com/trauter/google-cloud-python-happybase.git#egg=google-cloud-happybase'],
     zip_safe=False,
     keywords='cattledb',
     test_suite='tests',
