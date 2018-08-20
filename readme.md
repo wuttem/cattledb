@@ -1,6 +1,6 @@
 # Cattle DB #
 
-[![Build Status](https://travis-ci.org/wuttem/cattledb.svg?branch=develop)](https://travis-ci.org/wuttem/cattledb)
+[![Build Status](https://travis-ci.org/wuttem/cattledb.svg?branch=master)](https://travis-ci.org/wuttem/cattledb)
 
 Fast BigTable Time Series Database Implementation
 
