@@ -4,14 +4,13 @@ services:
   - docker
 language: python
 env:
-  - BIGTABLE_EMULATOR_HOST="localhost:8080"
-  - CATTLEDB_CONFIGURATION="testing"
+  - BIGTABLE_EMULATOR_HOST=localhost:8080 CATTLEDB_CONFIGURATION=testing
 python:
 #  - "2.7"
   - "3.5"
   - "pypy"
 before_install:
-  - docker run -d -p 127.0.0.1:8080:8080 spotify/bigtable-emulator:latest"
+  - docker run -d -p 127.0.0.1:8080:8080 spotify/bigtable-emulator:latest
   - docker ps -a
   - sleep 5
 install:
