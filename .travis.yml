@@ -15,7 +15,6 @@ before_install:
   - sleep 5
 install:
   - pip install -r requirements_server.txt
-  - pip install -r requirements_httpserver.txt
   - pip install -r requirements.txt
   - pip install pytest mock
   - pip install .
