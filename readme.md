@@ -1,8 +1,9 @@
 # Cattle DB #
 
+[![Build Status](https://travis-ci.org/wuttem/cattledb.svg?branch=develop)](https://travis-ci.org/wuttem/cattledb)
+
 Fast BigTable Time Series Database Implementation
 
-TODO: Add blinker signals
 
 ## Run Docker Emulator for Tests on Machine
 
@@ -12,6 +13,7 @@ export BIGTABLE_EMULATOR_HOST=localhost:8080
 pytest
 ```
 
+
 ## Build and Start Tests in docker
 ```
 docker build . -t cattledb-test
@@ -20,6 +22,7 @@ service bigtable-server start
 export BIGTABLE_EMULATOR_HOST="localhost:8080"
 pytest
 ```
+
 
 ## Compile python protobuf file
 ```bash
