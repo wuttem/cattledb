@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # coding: utf8
 
+from __future__ import unicode_literals
+
 import unittest
 import random
 import logging
@@ -184,7 +186,7 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(len(ts3), 500)
 
     def test_dict(self):
-        d1 = SerializableDict(hello="wörld", föö="bär")
+        d1 = SerializableDict({"hello": "wörld", "föö":"bär"})
         d2 = SerializableDict({"1": 1, 2:3.4})
 
         self.assertEqual(d1["hello"], "wörld")
