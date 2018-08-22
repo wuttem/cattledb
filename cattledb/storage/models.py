@@ -31,7 +31,7 @@ Point = namedtuple('Point', ['ts', 'value', 'dt'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 
 TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
-
+RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
 
 class SeriesType(Enum):
     FLOATSERIES = 1

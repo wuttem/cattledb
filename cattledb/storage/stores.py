@@ -16,7 +16,7 @@ import happybase
 from happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names
-from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem
+from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem, RowUpsert
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 
 # from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
@@ -32,10 +32,10 @@ class MetaDataStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.connection_pool = connection_object.pool
+        #self.connection_pool = connection_object.pool
 
-    def table(self, connection):
-        return self.connection_object.get_table(self.TABLENAME, connection=connection)
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
 
     def _create_tables(self, silent=False):
         i = self.connection_object.get_admin_instance()
@@ -77,17 +77,17 @@ class MetaDataStore(object):
         column = "i:" if internal else "p:"
 
         timer = time.time()
-        res = []
         row_keys = []
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            with Batch(dt) as b:
-                for i in items:
-                    row_key = self.get_row_key(i.object_name, i.object_id)
-                    row_keys.append(row_key)
-                    cn = "{}{}".format(column, i.key)
-                    data = {cn: SerializableDict(i.data).to_msgpack()}
-                    b.put(row_key, data)
+        upserts = []
+        for i in items:
+            row_key = self.get_row_key(i.object_name, i.object_id)
+            row_keys.append(row_key)
+            cn = "{}{}".format(column, i.key)
+            data = {cn: SerializableDict(i.data).to_msgpack()}
+            upserts.append(RowUpsert(row_key, data))
+
+        dt = self.table()
+        dt.upsert_rows(upserts)
 
         timer = time.time() - timer
         # emit signal
@@ -109,21 +109,22 @@ class MetaDataStore(object):
         return None
 
     def get_metadata_bulk(self, object_name, object_ids, keys=None, internal=False):
-        row_keys = [self.get_row_key(object_name, id).encode("utf-8") for id in object_ids]
-        columns = ["i:"] if internal else ["p:"]
+        row_keys = [self.get_row_key(object_name, id) for id in object_ids]
+        columns = ["i"] if internal else ["p"]
 
         timer = time.time()
 
         metadata = list()
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            res = dt.rows(row_keys, columns)
+        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        # with self.connection_pool.connection() as conn:
+        #     dt = self.table(conn)
+        #     res = dt.rows(row_keys, columns)
 
         for row_key, data_dict in res:
-            o_name, o_id = row_key.decode("utf-8").split("#")
+            o_name, o_id = row_key.split("#")
             d = dict()
             for k, value in data_dict.items():
-                s = k.decode("utf-8").split(":")
+                s = k.split(":")
                 if len(s) != 2:
                     continue
                 key = s[1]
@@ -420,14 +421,12 @@ class TimeSeriesStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.connection_pool = connection_object.pool
-
         self.METRIC_NAME_LOOKUP = get_metric_name_lookup(self.connection_object.metrics)
         self.METRIC_NAMES = get_metric_names(self.connection_object.metrics)
         self.METRIC_IDS = get_metric_ids(self.connection_object.metrics)
 
-    def table(self, connection):
-        return self.connection_object.get_table(self.TABLENAME, connection=connection)
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
 
     def _create_tables(self, silent=False):
         i = self.connection_object.get_admin_instance()
@@ -510,17 +509,32 @@ class TimeSeriesStore(object):
         row_keys = []
         key = ts.key
         timer = time.time()
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            with Batch(dt) as b:
-                for day, bucket in ts.daily_storage_buckets():
-                    row_key = self.get_row_key(key, day)
-                    row_keys.append(row_key)
-                    data = {}
-                    for timestamp, val in bucket:
-                        cn = "{}:{}".format(metric_object.id, timestamp)
-                        data[cn] = val
-                    b.put(row_key, data)
+        # with self.connection_pool.connection() as conn:
+        #     dt = self.table(conn)
+        #     with Batch(dt) as b:
+        #         for day, bucket in ts.daily_storage_buckets():
+        #             row_key = self.get_row_key(key, day)
+        #             row_keys.append(row_key)
+        #             data = {}
+        #             for timestamp, val in bucket:
+        #                 cn = "{}:{}".format(metric_object.id, timestamp)
+        #                 data[cn] = val
+        #             b.put(row_key, data)
+
+        row_keys = []
+        upserts = []
+        for day, bucket in ts.daily_storage_buckets():
+            row_key = self.get_row_key(key, day)
+            row_keys.append(row_key)
+            data = {}
+            for timestamp, val in bucket:
+                cn = "{}:{}".format(metric_object.id, timestamp)
+                data[cn] = val
+            upserts.append(RowUpsert(row_key, data))
+
+        dt = self.table()
+        dt.upsert_rows(upserts)
+
         timer = time.time() - timer
         # emit signal
         signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "PUT"}
@@ -549,17 +563,18 @@ class TimeSeriesStore(object):
 
         metric_objects = [self.get_metric_object(m) for m in metrics]
 
-        row_keys = [self.get_row_key(key, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        columns = ["{}:".format(m.id) for m in metric_objects]
+        row_keys = [self.get_row_key(key, ts) for ts in daily_timestamps(from_ts, to_ts)]
+        columns = ["{}".format(m.id) for m in metric_objects]
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            res = dt.rows(row_keys, columns)
+        # with self.connection_pool.connection() as conn:
+        #     dt = self.table(conn)
+        #     res = dt.rows(row_keys, columns)
+        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
 
         for row_key, data_dict in res:
             for k, value in data_dict.items():
-                s = k.decode("utf-8").split(":")
+                s = k.split(":")
                 if len(s) != 2:
                     continue
                 m = s[0]
@@ -591,10 +606,10 @@ class TimeSeriesStore(object):
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
 
-        start_search_row = self.get_row_key(key, max_ts).encode("utf-8")
-        row_prefix = "{}#".format(key).encode("utf-8")
+        start_search_row = self.get_row_key(key, max_ts)
+        row_prefix = "{}#".format(key)
         metric_objects = [self.get_metric_object(m) for m in metrics]
-        columns = ["{}:".format(m.id) for m in metric_objects]
+        columns = ["{}".format(m.id) for m in metric_objects]
 
         timer = time.time()
         row_keys = []
@@ -602,31 +617,58 @@ class TimeSeriesStore(object):
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
 
         # Start scanning
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            # with prefix
-            # res = dt.scan(row_prefix=row_prefix, limit=max_days, columns=columns)
-            # with row start
-            res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
-            for row_key, data_dict in res:
-                row_keys.append(row_key.decode("utf-8"))
+        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
+                                            column_families=columns)
+        i = 0
+        for row_key, data_dict in rowgen:
+            i += 1
+            if i > max_days:
+                break
 
-                # Break if we get another deviceid
-                if not row_key.startswith(row_prefix):
-                    break
+            # Break if we get another deviceid
+            if not row_key.startswith(row_prefix):
+                break
 
-                # Append to Timeseries
-                for k, value in data_dict.items():
-                    s = k.decode("utf-8").split(":")
-                    if len(s) != 2:
-                        continue
-                    m = s[0]
-                    if m in timeseries.keys():
-                        ts = int(s[1])
-                        timeseries[m].insert_storage_item(ts, value)
+            row_keys.append(row_key)
 
-                if all([len(x) >= count for x in timeseries.values()]):
-                    break
+            # Append to Timeseries
+            for k, value in data_dict.items():
+                s = k.split(":")
+                if len(s) != 2:
+                    continue
+                m = s[0]
+                if m in timeseries.keys():
+                    ts = int(s[1])
+                    timeseries[m].insert_storage_item(ts, value)
+
+            if all([len(x) >= count for x in timeseries.values()]):
+                break
+
+        # with self.connection_pool.connection() as conn:
+        #     dt = self.table(conn)
+        #     # with prefix
+        #     # res = dt.scan(row_prefix=row_prefix, limit=max_days, columns=columns)
+        #     # with row start
+        #     res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
+        #     for row_key, data_dict in res:
+        #         row_keys.append(row_key.decode("utf-8"))
+
+        #         # Break if we get another deviceid
+        #         if not row_key.startswith(row_prefix):
+        #             break
+
+        #         # Append to Timeseries
+        #         for k, value in data_dict.items():
+        #             s = k.decode("utf-8").split(":")
+        #             if len(s) != 2:
+        #                 continue
+        #             m = s[0]
+        #             if m in timeseries.keys():
+        #                 ts = int(s[1])
+        #                 timeseries[m].insert_storage_item(ts, value)
+
+        #         if all([len(x) >= count for x in timeseries.values()]):
+        #             break
 
         out = []
         size = 0
@@ -654,20 +696,24 @@ class TimeSeriesStore(object):
         assert len(metrics[0]) > 1
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
+        row_keys = [self.get_row_key(key, ts) for ts in daily_timestamps(from_ts, to_ts)]
         metric_objects = [self.get_metric_object(m) for m in metrics]
         # Check for delete flag
         columns = []
         for m in metric_objects:
             if not m.delete_possible:
                 raise RuntimeError("Delete not possible on metric {}".format(m.name))
-            columns.append("{}:".format(m.id))
+            columns.append("{}".format(m.id))
 
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            with Batch(dt) as b:
-                for row_key in row_keys:
-                    b.delete(row_key, columns=columns)
+        table = self.table()
+        for row_key in row_keys:
+            table.delete_row(row_key, column_families=columns)
+
+        # with self.connection_pool.connection() as conn:
+        #     dt = self.table(conn)
+        #     with Batch(dt) as b:
+        #         for row_key in row_keys:
+        #             b.delete(row_key, columns=columns)
 
         timer = time.time() - timer
         count = len(row_keys)

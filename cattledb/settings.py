@@ -51,7 +51,7 @@ class BaseConfig(object):
     GCP_CREDENTIALS = None
     READ_ONLY = False
     POOL_SIZE = 10
-    TABLE_PREFIX = "cdb"
+    TABLE_PREFIX = "mycdb"
 
     CLOUD_LOGGING = False
 
