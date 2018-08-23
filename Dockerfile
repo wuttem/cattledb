@@ -27,11 +27,13 @@ RUN apt-get install -y ca-certificates
 RUN mkdir -p /app
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
+COPY requirements_server.txt /app/requirements_server.txt
 
 # Updates
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r /app/requirements.txt
-RUN pip install pytest
+RUN pip install --no-cache-dir -r /app/requirements_server.txt
+RUN pip install pytest mock
 
 COPY . /app
 
