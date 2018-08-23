@@ -1,4 +1,2 @@
-#google-cloud-happybase==0.26.0
 google-cloud-bigtable==0.29.0
 google-cloud-core==0.28.1
--e git+https://github.com/trauter/google-cloud-python-happybase.git#egg=google-cloud-happybase

@@ -6,6 +6,7 @@ import time
 import os
 import random
 import six
+import struct
 
 from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter, FamilyNameRegexFilter, RowFilterChain, RowFilterUnion, RowKeyRegexFilter
@@ -37,15 +38,11 @@ class Connection(object):
         if bigtable_emu:
             self.credentials = EmulatorCreds()
 
-        # self.client = bigtable.Client(project=self.project_id, admin=False,
-        #                               read_only=self.read_only, credentials=self.credentials)
-        # self.instance = self.client.instance(self.instance_id)
         self.admin_instance = None
         self.current_tables = None
         self.instances = []
         self.pool_size = pool_size
         self.pool = None
-        #self.pool = happybase.ConnectionPool(pool_size, instance=self.instance)
         self.stores = {}
 
         self.metrics = []
@@ -162,6 +159,8 @@ class Table(object):
         else:
             for c in column_families:
                 row.delete_cells(c.encode("utf-8"), row.ALL_COLUMNS)
+        row.commit()
+        return 1
 
     def upsert_rows(self, row_upserts):
         rows = []
@@ -243,3 +242,50 @@ class Table(object):
         for rk, data in generator:
             result.append((rk, data))
         return result
+
+    # Taken from google-bigtable-happybase
+    def increment_counter(self, row_id, column, value):
+        """Atomically increment a counter column.
+        This method atomically increments a counter column in ``row``.
+        If the counter column does not exist, it is automatically initialized
+        to ``0`` before being incremented.
+        :type row: str
+        :param row: Row key for the row we are incrementing a counter in.
+        :type column: str
+        :param column: Column we are incrementing a value in; of the
+                       form ``fam:col``.
+        :type value: int
+        :param value: Amount to increment the counter by. (If negative,
+                      this is equivalent to decrement.)
+        :rtype: int
+        :returns: Counter value after incrementing.
+        """
+        row = self._low_level.row(row_id.encode("utf-8"), append=True)
+        column_family_id, column_qualifier = column.split(':')
+        row.increment_cell_value(column_family_id.encode("utf-8"),
+                                 column_qualifier.encode("utf-8"), value)
+        modified_cells = row.commit()
+
+        if six.PY2:
+            column_cells = modified_cells[column_family_id][column_qualifier]
+        else:
+            inner_keys = list(six.iterkeys(modified_cells[column_family_id]))
+            if not inner_keys:
+                raise KeyError(column_qualifier)
+            if isinstance(inner_keys[0], six.binary_type):
+                column_cells = modified_cells[
+                    column_family_id][six.b(column_qualifier)]
+            elif isinstance(inner_keys[0], six.string_types):
+                column_cells = modified_cells[
+                    column_family_id][six.u(column_qualifier)]
+            else:
+                raise KeyError(column_qualifier)
+
+        # Make sure there is exactly one cell in the column.
+        if len(column_cells) != 1:
+            raise ValueError('Expected server to return one modified cell.')
+        column_cell = column_cells[0]
+        # Get the bytes value from the column and convert it to an integer.
+        bytes_value = column_cell[0]
+        int_value, = struct.Struct('>q').unpack(bytes_value)
+        return int_value

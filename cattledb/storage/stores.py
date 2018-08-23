@@ -12,14 +12,10 @@ from collections import namedtuple, defaultdict
 from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
-import happybase
-from happybase.batch import Batch
 
 from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names
 from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem, RowUpsert
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
-
-# from ..timeseries_settings import METRIC_NAME_LOOKUP, METRIC_IDS, METRIC_NAMES
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +28,6 @@ class MetaDataStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        #self.connection_pool = connection_object.pool
 
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
@@ -116,14 +111,11 @@ class MetaDataStore(object):
 
         metadata = list()
         res = self.table().read_rows(row_keys=row_keys, column_families=columns)
-        # with self.connection_pool.connection() as conn:
-        #     dt = self.table(conn)
-        #     res = dt.rows(row_keys, columns)
 
         for row_key, data_dict in res:
             o_name, o_id = row_key.split("#")
             d = dict()
-            for k, value in data_dict.items():
+            for k, value in six.iteritems(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -152,10 +144,9 @@ class ActivityStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.connection_pool = connection_object.pool
 
-    def table(self, connection):
-        return self.connection_object.get_table(self.TABLENAME, connection=connection)
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
 
     def _create_tables(self, silent=False):
         i = self.connection_object.get_admin_instance()
@@ -218,68 +209,6 @@ class ActivityStore(object):
                 row_keys.append("{}#{}#{}".format(p, reverse_day_ts, reader_id))
         return row_keys
 
-    # My Counter inc
-    # fix for bug in happybase driver
-    # See Github: https://github.com/GoogleCloudPlatform/google-cloud-python-happybase/issues/23
-    def counter_inc(self, table, row, column, value=1):
-        """Atomically increment a counter column.
-        This method atomically increments a counter column in ``row``.
-        If the counter column does not exist, it is automatically initialized
-        to ``0`` before being incremented.
-        :type row: str
-        :param row: Row key for the row we are incrementing a counter in.
-        :type column: str
-        :param column: Column we are incrementing a value in; of the
-                       form ``fam:col``.
-        :type value: int
-        :param value: Amount to increment the counter by. (If negative,
-                      this is equivalent to decrement.)
-        :rtype: int
-        :returns: Counter value after incrementing.
-        """
-        row = table._low_level_table.row(row, append=True)
-        if isinstance(column, six.binary_type):
-            column = column.decode('utf-8')
-        column_family_id, column_qualifier = column.split(':')
-        row.increment_cell_value(column_family_id, column_qualifier, value)
-        # See AppendRow.commit() will return a dictionary:
-        # {
-        #     u'col-fam-id': {
-        #         b'col-name1': [
-        #             (b'cell-val', datetime.datetime(...)),
-        #             ...
-        #         ],
-        #         ...
-        #     },
-        # }
-        modified_cells = row.commit()
-        # Get the cells in the modified column,
-        # column_cells = modified_cells[column_family_id][column_qualifier]
-
-        if six.PY2:
-            column_cells = modified_cells[column_family_id][column_qualifier]
-        else:
-            inner_keys = list(six.iterkeys(modified_cells[column_family_id]))
-            if not inner_keys:
-                raise KeyError(column_qualifier)
-            if isinstance(inner_keys[0], six.binary_type):
-                column_cells = modified_cells[
-                    column_family_id][six.b(column_qualifier)]
-            elif isinstance(inner_keys[0], six.string_types):
-                column_cells = modified_cells[
-                    column_family_id][six.u(column_qualifier)]
-            else:
-                raise KeyError(column_qualifier)
-
-        # Make sure there is exactly one cell in the column.
-        if len(column_cells) != 1:
-            raise ValueError('Expected server to return one modified cell.')
-        column_cell = column_cells[0]
-        # Get the bytes value from the column and convert it to an integer.
-        bytes_value = column_cell[0]
-        int_value, = struct.Struct('>q').unpack(bytes_value)
-        return int_value
-
     def incr_activity(self, reader_id, device_id, timestamp, parent_ids=None, value=1):
         if self.connection_object.read_only:
             raise RuntimeError("Cannot execute incr_activity in readonly mode")
@@ -292,12 +221,9 @@ class ActivityStore(object):
 
         timer = time.time()
         res = []
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            for r in row_keys:
-                # bugfix
-                # res.append(self.counter_inc(dt, r, column, value))
-                res.append(dt.counter_inc(r, column.encode("utf-8"), value))
+        table = self.table()
+        for r in row_keys:
+            res.append(table.increment_counter(r, column, value))
 
         timer = time.time() - timer
         # emit signal
@@ -316,22 +242,20 @@ class ActivityStore(object):
         assert to_ts - from_ts < self.MAX_GET_SIZE
 
         daily_ts =  daily_timestamps(from_ts, to_ts)
-        row_keys = [self.get_row_key("t", ts, reader_id=reader_id).encode("utf-8") for ts in daily_ts]
-        columns = ["c:"]
+        row_keys = [self.get_row_key("t", ts, reader_id=reader_id) for ts in daily_ts]
+        columns = ["c"]
 
         timer = time.time()
 
         activitys = defaultdict(lambda: defaultdict(int))
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            res = [(r, dt.row(r, columns)) for r in row_keys]
-            #res = dt.rows(row_keys, columns)
+        rowgen = self.table().row_generator(row_keys=row_keys,
+                                            column_families=columns)
 
-        for row_key, data_dict in res:
-            day = self.reverse_day_key_to_day(row_key.decode("utf-8").split("#")[-2])
+        for row_key, data_dict in rowgen:
+            day = self.reverse_day_key_to_day(row_key.split("#")[-2])
             # Append to Activity
-            for k, value in data_dict.items():
-                s = k.decode("utf-8").split(":")
+            for k, value in six.iteritems(data_dict):
+                s = k.split(":")
                 if len(s) != 2:
                     continue
                 p = s[1].split(".")
@@ -358,9 +282,9 @@ class ActivityStore(object):
         return out
 
     def get_activity_for_day(self, parent_id, day_ts):
-        start_search_row = self.get_row_key(parent_id, day_ts).encode("utf-8")
-        row_prefix = self.get_row_key(parent_id, day_ts).encode("utf-8")
-        columns = ["c:"]
+        start_search_row = self.get_row_key(parent_id, day_ts)
+        row_prefix = self.get_row_key(parent_id, day_ts)
+        columns = ["c"]
 
         timer = time.time()
 
@@ -369,32 +293,25 @@ class ActivityStore(object):
         row_keys = []
 
         # Start scanning
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            # with prefix
-            # res = dt.scan(row_prefix=row_prefix, columns=columns)
-            # with row start
-            res = dt.scan(row_start=start_search_row, columns=columns)
-            for row_key, data_dict in res:
-                # Break if we get another prefix
-                if not row_key.startswith(row_prefix):
-                    break
+        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
+                                            column_families=columns)
 
-                row_counter += 1
-                # Append to Activity
-                readout_id = row_key.decode("utf-8").split("#")[-1]
-                row_keys.append(row_key.decode("utf-8"))
-                day = self.reverse_day_key_to_day(row_key.decode("utf-8").split("#")[-2])
+        for row_key, data_dict in rowgen:
+            row_counter += 1
+            # Append to Activity
+            readout_id = row_key.split("#")[-1]
+            row_keys.append(row_key)
+            day = self.reverse_day_key_to_day(row_key.split("#")[-2])
 
-                for k, value in data_dict.items():
-                    s = k.decode("utf-8").split(":")
-                    if len(s) != 2:
-                        continue
-                    p = s[1].split(".")
-                    if len(p) != 2:
-                        continue
-                    day_hour = "{}{}".format(day, p[0])
-                    activitys[day_hour][readout_id].append(p[1])
+            for k, value in six.iteritems(data_dict):
+                s = k.split(":")
+                if len(s) != 2:
+                    continue
+                p = s[1].split(".")
+                if len(p) != 2:
+                    continue
+                day_hour = "{}{}".format(day, p[0])
+                activitys[day_hour][readout_id].append(p[1])
 
         timer = time.time() - timer
         # emit signal
@@ -410,7 +327,6 @@ class ActivityStore(object):
                 devices = inner[reader_id]
                 out.append(ReaderActivityItem(day_hour, reader_id, devices))
         return out
-        #return [(k, dict(activitys[k])) for k in sorted(activitys.keys())]
 
 
 class TimeSeriesStore(object):
@@ -509,17 +425,6 @@ class TimeSeriesStore(object):
         row_keys = []
         key = ts.key
         timer = time.time()
-        # with self.connection_pool.connection() as conn:
-        #     dt = self.table(conn)
-        #     with Batch(dt) as b:
-        #         for day, bucket in ts.daily_storage_buckets():
-        #             row_key = self.get_row_key(key, day)
-        #             row_keys.append(row_key)
-        #             data = {}
-        #             for timestamp, val in bucket:
-        #                 cn = "{}:{}".format(metric_object.id, timestamp)
-        #                 data[cn] = val
-        #             b.put(row_key, data)
 
         row_keys = []
         upserts = []
@@ -567,13 +472,10 @@ class TimeSeriesStore(object):
         columns = ["{}".format(m.id) for m in metric_objects]
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
-        # with self.connection_pool.connection() as conn:
-        #     dt = self.table(conn)
-        #     res = dt.rows(row_keys, columns)
         res = self.table().read_rows(row_keys=row_keys, column_families=columns)
 
         for row_key, data_dict in res:
-            for k, value in data_dict.items():
+            for k, value in six.iteritems(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -632,7 +534,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for k, value in data_dict.items():
+            for k, value in six.iteritems(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -643,32 +545,6 @@ class TimeSeriesStore(object):
 
             if all([len(x) >= count for x in timeseries.values()]):
                 break
-
-        # with self.connection_pool.connection() as conn:
-        #     dt = self.table(conn)
-        #     # with prefix
-        #     # res = dt.scan(row_prefix=row_prefix, limit=max_days, columns=columns)
-        #     # with row start
-        #     res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
-        #     for row_key, data_dict in res:
-        #         row_keys.append(row_key.decode("utf-8"))
-
-        #         # Break if we get another deviceid
-        #         if not row_key.startswith(row_prefix):
-        #             break
-
-        #         # Append to Timeseries
-        #         for k, value in data_dict.items():
-        #             s = k.decode("utf-8").split(":")
-        #             if len(s) != 2:
-        #                 continue
-        #             m = s[0]
-        #             if m in timeseries.keys():
-        #                 ts = int(s[1])
-        #                 timeseries[m].insert_storage_item(ts, value)
-
-        #         if all([len(x) >= count for x in timeseries.values()]):
-        #             break
 
         out = []
         size = 0
@@ -709,12 +585,6 @@ class TimeSeriesStore(object):
         for row_key in row_keys:
             table.delete_row(row_key, column_families=columns)
 
-        # with self.connection_pool.connection() as conn:
-        #     dt = self.table(conn)
-        #     with Batch(dt) as b:
-        #         for row_key in row_keys:
-        #             b.delete(row_key, columns=columns)
-
         timer = time.time() - timer
         count = len(row_keys)
         # emit signal
@@ -733,10 +603,9 @@ class EventStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.connection_pool = connection_object.pool
 
-    def table(self, connection):
-        return self.connection_object.get_table(self.TABLENAME, connection=connection)
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
 
     def _create_tables(self, silent=False):
         i = self.connection_object.get_admin_instance()
@@ -784,17 +653,19 @@ class EventStore(object):
 
         timer = time.time()
         row_keys = []
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            with Batch(dt) as b:
-                for day, bucket in event_list.daily_storage_buckets():
-                    row_key = self.get_row_key(key, name, day)
-                    row_keys.append(row_key)
-                    data = {}
-                    for timestamp, val in bucket:
-                        cn = "e:{}".format(timestamp)
-                        data[cn] = val
-                    b.put(row_key, data)
+        upserts = []
+        for day, bucket in event_list.daily_storage_buckets():
+            row_key = self.get_row_key(key, name, day)
+            row_keys.append(row_key)
+            data = {}
+            for timestamp, val in bucket:
+                cn = "e:{}".format(timestamp)
+                data[cn] = val
+            upserts.append(RowUpsert(row_key, data))
+
+        dt = self.table()
+        dt.upsert_rows(upserts)
+
         timer = time.time() - timer
         # emit signal
         signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "PUT"}
@@ -812,17 +683,15 @@ class EventStore(object):
         assert to_ts - from_ts < self.MAX_GET_SIZE
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
-        columns = ["e:"]
+        row_keys = [self.get_row_key(key, name, ts) for ts in daily_timestamps(from_ts, to_ts)]
+        columns = ["e"]
 
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            res = dt.rows(row_keys, columns)
+        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
 
         events = EventList(key, name)
         for row_key, data_dict in res:
-            for k, value in data_dict.items():
-                s = k.decode("utf-8").split(":")
+            for k, value in six.iteritems(data_dict):
+                s = k.split(":")
                 if len(s) != 2:
                     continue
                 m = s[0]
@@ -847,40 +716,40 @@ class EventStore(object):
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
 
-        start_search_row = self.get_row_key(key, name, max_ts).encode("utf-8")
-        row_prefix = "{}#{}#".format(key, name).encode("utf-8")
-        columns = ["e:"]
+        start_search_row = self.get_row_key(key, name, max_ts)
+        row_prefix = "{}#{}#".format(key, name)
+        columns = ["e"]
 
         timer = time.time()
         row_keys = []
 
         events = EventList(key, name)
         # Start scanning
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            # with prefix
-            # res = dt.scan(row_prefix=row_prefix, limit=max_days, columns=columns)
-            # with row start
-            res = dt.scan(row_start=start_search_row, limit=max_days, columns=columns)
+        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
+                                            column_families=columns)
+        i = 0
+        for row_key, data_dict in rowgen:
+            i += 1
+            if i > max_days:
+                break
 
-            for row_key, data_dict in res:
-                row_keys.append(row_key.decode("utf-8"))
+            # Break if we get another deviceid
+            if not row_key.startswith(row_prefix):
+                break
 
-                # Break if we get another row prefix
-                if not row_key.startswith(row_prefix):
-                    break
+            row_keys.append(row_key)
 
-                # Append to Timeseries
-                for key, value in data_dict.items():
-                    s = key.decode("utf-8").split(":")
-                    if len(s) != 2:
-                        continue
-                    m = s[0]
-                    ts = int(s[1])
-                    events.insert_storage_item(ts, value)
+            # Append to Timeseries
+            for key, value in six.iteritems(data_dict):
+                s = key.split(":")
+                if len(s) != 2:
+                    continue
+                m = s[0]
+                ts = int(s[1])
+                events.insert_storage_item(ts, value)
 
-                if len(events) >= count:
-                    break
+            if len(events) >= count:
+                break
 
         events.trim_count_newest(count)
 
@@ -900,13 +769,11 @@ class EventStore(object):
         assert from_ts <= to_ts
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, name, ts).encode("utf-8") for ts in daily_timestamps(from_ts, to_ts)]
+        row_keys = [self.get_row_key(key, name, ts) for ts in daily_timestamps(from_ts, to_ts)]
 
-        with self.connection_pool.connection() as conn:
-            dt = self.table(conn)
-            with Batch(dt) as b:
-                for row_key in row_keys:
-                    b.delete(row_key)
+        table = self.table()
+        for row_key in row_keys:
+            table.delete_row(row_key)
 
         timer = time.time() - timer
         count = len(row_keys)
