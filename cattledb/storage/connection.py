@@ -42,7 +42,6 @@ class Connection(object):
         self.current_tables = None
         self.instances = []
         self.pool_size = pool_size
-        self.pool = None
         self.stores = {}
 
         self.metrics = []
@@ -62,6 +61,11 @@ class Connection(object):
         from .stores import MetaDataStore
         self.metadata = MetaDataStore(self)
         self.register_store(self.metadata)
+
+    def clone(self):
+        return Connection(self.project_id, self.instance_id, read_only=self.read_only,
+                          pool_size=self.pool_size, table_prefix=self.table_prefix,
+                          credentials=self.credentials, metric_definition=self.metrics)
 
     def create_instance(self, admin=False):
         return bigtable.Client(project=self.project_id, admin=admin,
