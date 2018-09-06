@@ -31,7 +31,7 @@ class CDBClient(object):
         try:
             grpc.channel_ready_future(self.channel).result(timeout=10)
         except grpc.FutureTimeoutError:
-            raise RuntimeError('Error connecting to server')
+            raise RuntimeError('Error connecting to server: {}'.format(endpoint))
         else:
             self.timeseries = cdb_pb2_grpc.TimeSeriesStub(self.channel)
             self.events = cdb_pb2_grpc.EventsStub(self.channel)
