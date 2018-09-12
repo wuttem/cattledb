@@ -288,6 +288,14 @@ class TimeSeries(object):
         self.check_series() # may be removed
         return counter
 
+    def get_index_below_ts(self, ts):
+        if self.empty():
+            return None
+        low = bisect.bisect_left(self._timestamps, ts) - 1
+        if low >= 0:
+            return low
+        return None
+
     def trim(self, ts_min, ts_max):
         low = bisect.bisect_left(self._timestamps, ts_min)
         high = bisect.bisect_right(self._timestamps, ts_max)
@@ -314,6 +322,17 @@ class TimeSeries(object):
         """
         i = 0
         while i < len(self._timestamps):
+            yield self._at(i)
+            i += 1
+
+    def yield_range(self, ts_min, ts_max):
+        """Return an iterator to get all ts value pairs in range.
+        """
+        low = bisect.bisect_left(self._timestamps, ts_min)
+        high = bisect.bisect_right(self._timestamps, ts_max)
+
+        i = low
+        while i < high:
             yield self._at(i)
             i += 1
 
