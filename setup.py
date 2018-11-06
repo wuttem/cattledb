@@ -30,13 +30,11 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 # parse_requirements() returns generator of pip.req.InstallRequirement objects
 install_reqs = parse_requirements('requirements.txt', session=False)
 server_reqs = parse_requirements('requirements_server.txt', session=False)
-httpserver_reqs = parse_requirements('requirements_httpserver.txt', session=False)
 
 # reqs is a list of requirement
 # e.g. ['django==1.5.1', 'mezzanine==1.4.6']
 reqs = [str(ir.req) for ir in install_reqs]
 s_reqs = [str(ir.req) for ir in server_reqs]
-hs_reqs = [str(ir.req) for ir in httpserver_reqs]
 
 test_reqs = [
     "pytest",
@@ -68,8 +66,7 @@ setup(
         'cattledb',
     ],
     extras_require={
-        'server':  s_reqs,
-        'httpserver': hs_reqs
+        'server':  s_reqs
     },
     package_dir={'cattledb':
                  'cattledb'},
