@@ -34,3 +34,10 @@ import cdb_pb2 as cdb__pb2
 # to
 from . import cdb_pb2 as cdb__pb2
 ```
+
+## Build and Push cattledb docker
+```bash
+docker build . -t mths/cattledb:latest
+docker tag mths/cattledb:latest mths/cattledb:0.1
+docker push mths/cattledb
+```
