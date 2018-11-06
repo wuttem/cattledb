@@ -9,6 +9,7 @@ import six
 import struct
 
 from google.cloud import bigtable
+from google.auth.credentials import AnonymousCredentials
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter, FamilyNameRegexFilter, RowFilterChain, RowFilterUnion, RowKeyRegexFilter
 #from google.cloud.bigtable.row_set import RowSet
 #from google.oauth2 import service_account
@@ -16,11 +17,6 @@ import google.auth
 
 
 logger = logging.getLogger(__name__)
-
-
-class EmulatorCreds(google.auth.credentials.Credentials):
-    def refresh(self, request):
-        pass
 
 
 class Connection(object):
@@ -36,7 +32,7 @@ class Connection(object):
         # credentials = service_account.Credentials.from_service_account_file('/path/to/key.json')
         bigtable_emu = os.environ.get('BIGTABLE_EMULATOR_HOST', None)
         if bigtable_emu:
-            self.credentials = EmulatorCreds()
+            self.credentials = AnonymousCredentials()
 
         self.admin_instance = None
         self.current_tables = None
@@ -180,6 +176,7 @@ class Table(object):
                 raise ValueError("Bigtable upsert failed with: {} - {}".format(r.code, r.message))
         return responses
 
+
     def row_generator(self, row_keys=None, start_key=None, end_key=None, prefix=None,
                       column_families=None):
         if row_keys is None and (start_key is None or end_key is None) and prefix is None:
@@ -198,18 +195,6 @@ class Table(object):
             reg = prefix.encode("utf-8")
             filters.insert(0, RowKeyRegexFilter(reg))
         filter_ = RowFilterChain(filters=filters)
-
-        ### TODO: NEW Version of bigtable fix
-        # row_set = RowSet()
-        # if row_keys:
-        #     for r in row_keys:
-        #         row_set.add_row_key(r)
-        # else:
-        #     row_set.add_row_range_from_keys(start_key=start_key, end_key=end_key,
-        #                                     start_inclusive=True, end_inclusive=True)
-
-        # generator = self._low_level.yield_rows(filter_=filter_, row_set=row_set)
-        ### TODO: END
 
         result = []
         if row_keys:
@@ -236,6 +221,47 @@ class Table(object):
                     break
             curr_row_dict = self.partial_row_to_dict(rowdata)
             yield (rk, curr_row_dict)
+
+    # TODO With Bigtable v0.31.1
+    # def row_generator_new(self, row_keys=None, start_key=None, end_key=None,
+    #                   column_families=None):
+    #     if row_keys is None and (start_key is None or end_key is None):
+    #         raise ValueError("use row_keys or start_key and end_key parameter")
+
+    #     filters = [CellsColumnLimitFilter(1)]
+    #     if column_families is not None:
+    #         c_filters = []
+    #         for c in column_families:
+    #             c_filters.append(FamilyNameRegexFilter(c))
+    #         if len(c_filters) == 1:
+    #             filters.append(c_filters[0])
+    #         elif len(c_filters) > 1:
+    #             filters.append(RowFilterUnion(c_filters))
+    #     filter_ = RowFilterChain(filters=filters)
+
+    #     row_set = RowSet()
+    #     if row_keys:
+    #         for r in row_keys:
+    #             row_set.add_row_key(r)
+    #     else:
+    #         row_set.add_row_range_from_keys(start_key=start_key, end_key=end_key,
+    #                                         start_inclusive=True, end_inclusive=True)
+
+    #     generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
+
+    #     i = -1
+    #     for rowdata in generator:
+    #         i += 1
+    #         if rowdata is None:
+    #             if row_keys:
+    #                 yield (row_keys[i], {})
+    #             continue
+    #         rk = rowdata.row_key.decode("utf-8")
+    #         if prefix:
+    #             if not rk.startswith(prefix):
+    #                 break
+    #         curr_row_dict = self.partial_row_to_dict(rowdata)
+    #         yield (rk, curr_row_dict)
 
     def read_rows(self, row_keys=None, start_key=None, end_key=None, prefix=None,
                   column_families=None):
