@@ -282,8 +282,8 @@ class ActivityStore(object):
         return out
 
     def get_activity_for_day(self, parent_id, day_ts):
-        start_search_row = self.get_row_key(parent_id, day_ts)
-        row_prefix = self.get_row_key(parent_id, day_ts)
+        #start_search_row = self.get_row_key(parent_id, day_ts)
+        row_start_search = self.get_row_key(parent_id, day_ts)
         columns = ["c"]
 
         timer = time.time()
@@ -293,12 +293,19 @@ class ActivityStore(object):
         row_keys = []
 
         # Start scanning
-        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
-                                            column_families=columns)
+        row_gen = self.table().row_generator(start_key=row_start_search, column_families=columns,
+                                             check_prefix=row_start_search)
+        # if row is not None:
+        # row = self.table().read_row(row_id)
+        # rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
+        #                                     column_families=columns)
 
-        for row_key, data_dict in rowgen:
-            row_counter += 1
+        for row_key, data_dict in row_gen:
+        # for row_key, data_dict in rowgen:
+            # row_counter += 1
             # Append to Activity
+            print(row_key)
+            print(data_dict)
             readout_id = row_key.split("#")[-1]
             row_keys.append(row_key)
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
@@ -318,8 +325,8 @@ class ActivityStore(object):
         signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
         sig = signal('activity.get')
         sig.send(self, info=signal_payload)
-        logger.debug("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer), extra=signal_payload)
-        # print("SCAN ACTIVITY: {} rows in {}".format(row_counter, timer))
+        logger.debug("SCAN ACTIVITY: {} rows in {}".format(1, timer), extra=signal_payload)
+        # print("SCAN ACTIVITY: {} rows in {}".format(1, timer))
         out = []
         for day_hour in sorted(activitys.keys()):
             inner = activitys[day_hour]
@@ -504,12 +511,53 @@ class TimeSeriesStore(object):
     def get_single_timeseries(self, key, metric, from_ts, to_ts):
         return self.get_timeseries(key, [metric], from_ts, to_ts)[0]
 
-    def get_last_values(self, key, metrics, count=1, max_days=180, max_ts=None):
+    def get_last_value(self, key, metric):
+        row_prefix = "{}#".format(key)
+        metric_object = self.get_metric_object(metric)
+        columns = [metric_object.id]
+
+        timer = time.time()
+        row_keys = []
+
+        series = TimeSeries(key, metric_object.name)
+        # Start scanning
+        row = self.table().get_first_row(row_prefix, column_families=columns)
+        if row is not None:
+            row_key, data_dict = row
+            row_keys.append(row_key)
+
+            # Append to Timeseries
+            for k, value in six.iteritems(data_dict):
+                s = k.split(":")
+                if len(s) != 2:
+                    continue
+                m = s[0]
+                if m != metric_object.id:
+                    raise ValueError(f"wrong metric in database {m} != {metric_object.id}")
+                ts = int(s[1])
+                series.insert_storage_item(ts, value)
+
+        series.trim_count_newest(1)
+
+        timer = time.time() - timer
+        # emit signal
+        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
+        sig = signal('timeseries.last')
+        sig.send(self, info=signal_payload)
+        logger.debug("SCAN: {}.{}, {} points in {}".format(key, metric, 1, timer), extra=signal_payload)
+        # print("SCAN: {}.{}, {} points in {}".format(key, metric, 1, timer))
+        return series
+
+    def get_last_values(self, key, metrics):
+        return [self.get_last_value(key, m) for m in metrics]
+
         if max_ts is None:
             max_ts = int(time.time() + 24 * 60 * 60)
+        min_ts = max_ts - ((max_days + 1) * 24 * 60 * 60)
 
         start_search_row = self.get_row_key(key, max_ts)
-        row_prefix = "{}#".format(key)
+        end_search_row = self.get_row_key(key, min_ts)
+        # row_prefix = "{}#".format(key)
         metric_objects = [self.get_metric_object(m) for m in metrics]
         columns = ["{}".format(m.id) for m in metric_objects]
 
@@ -519,17 +567,17 @@ class TimeSeriesStore(object):
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
 
         # Start scanning
-        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
-                                            column_families=columns)
-        i = 0
+        rowgen = self.table().row_generator(start_key=start_search_row,
+                                            column_families=columns, end_key=end_search_row)
+        # i = 0
         for row_key, data_dict in rowgen:
-            i += 1
-            if i > max_days:
-                break
+            # i += 1
+            # if i > max_days:
+            #     break
 
             # Break if we get another deviceid
-            if not row_key.startswith(row_prefix):
-                break
+            # if not row_key.startswith(row_prefix):
+            #     break
 
             row_keys.append(row_key)
 
@@ -710,13 +758,10 @@ class EventStore(object):
         return events
 
     def get_last_event(self, key, name):
-        return self.get_last_events(key, name, count=1, max_days=180)
+        return self.get_last_events(key, name, count=1)
 
-    def get_last_events(self, key, name, count=1, max_days=180, max_ts=None):
-        if max_ts is None:
-            max_ts = int(time.time() + 24 * 60 * 60)
-
-        start_search_row = self.get_row_key(key, name, max_ts)
+    def get_last_events(self, key, name, count=1):
+        assert count == 1
         row_prefix = "{}#{}#".format(key, name)
         columns = ["e"]
 
@@ -725,18 +770,9 @@ class EventStore(object):
 
         events = EventList(key, name)
         # Start scanning
-        rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
-                                            column_families=columns)
-        i = 0
-        for row_key, data_dict in rowgen:
-            i += 1
-            if i > max_days:
-                break
-
-            # Break if we get another deviceid
-            if not row_key.startswith(row_prefix):
-                break
-
+        row = self.table().get_first_row(row_prefix, column_families=columns)
+        if row is not None:
+            row_key, data_dict = row
             row_keys.append(row_key)
 
             # Append to Timeseries
@@ -748,10 +784,7 @@ class EventStore(object):
                 ts = int(s[1])
                 events.insert_storage_item(ts, value)
 
-            if len(events) >= count:
-                break
-
-        events.trim_count_newest(count)
+        events.trim_count_newest(1)
 
         timer = time.time() - timer
         # emit signal

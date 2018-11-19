@@ -40,9 +40,13 @@ class TimeSeriesStorageTest(unittest.TestCase):
         db.timeseries._create_metric("act", silent=True)
         db.timeseries._create_metric("temp", silent=True)
 
-        d1 = [(i * 600, 6.5) for i in range(502)]
-        d2 = [(i * 600 + 24 * 60 * 60, 25.5) for i in range(502)]
-        d3 = [(i * 600, 10.5) for i in range(502)]
+        t = int(time.time() - 50 * 24 * 60 * 60)
+
+        r = db.timeseries.delete_timeseries("sensor1", ["ph", "act", "temp"], t, t + 500*600 + 24 * 60 * 60)
+
+        d1 = [(t + i * 600, 6.5) for i in range(502)]
+        d2 = [(t + i * 600 + 24 * 60 * 60, 25.5) for i in range(502)]
+        d3 = [(t + i * 600, 10.5) for i in range(502)]
 
         data = [{"key": "sensor1",
                  "metric": "ph",
@@ -54,37 +58,38 @@ class TimeSeriesStorageTest(unittest.TestCase):
         db.timeseries.insert("sensor1", "act", d3)
         db.timeseries.insert("sensor2", "ph", d3)
 
-        r = db.timeseries.get_single_timeseries("sensor1", "act", 0, 500*600-1)
+        r = db.timeseries.get_single_timeseries("sensor1", "act", t, t + 500*600-1)
         a = list(r.all())
         d = list(r.aggregation("daily", "mean"))
         self.assertEqual(len(a), 500)
-        self.assertEqual(len(d), 4)
+        self.assertLessEqual(len(d), 5)
         for ts, v, dt in d:
             self.assertAlmostEqual(v, 10.5, 4)
 
-        r = db.timeseries.get_single_timeseries("sensor1", "ph", 0, 500*600-1)
+        r = db.timeseries.get_single_timeseries("sensor1", "ph", t, t + 500*600-1)
         a = list(r.all())
         d = list(r.aggregation("daily", "mean"))
         self.assertEqual(len(a), 500)
-        self.assertEqual(len(d), 4)
+        self.assertLessEqual(len(d), 5)
         for ts, v, dt in d:
             self.assertAlmostEqual(v, 6.5, 4)
 
-        r = db.timeseries.get_single_timeseries("sensor1", "temp", 24 * 60 * 60, 24 * 60 * 60 + 500*600)
+        r = db.timeseries.get_single_timeseries("sensor1", "temp", t + 24 * 60 * 60, t + 24 * 60 * 60 + 500*600)
         a = list(r.all())
         d = list(r.aggregation("daily", "mean"))
         self.assertEqual(len(a), 501)
-        self.assertEqual(len(d), 4)
+        self.assertLessEqual(len(d), 5)
         for ts, v, dt in d:
             self.assertAlmostEqual(v, 25.5, 4)
 
-        s = db.timeseries.get_last_values("sensor1", ["temp", "ph"], count=200)
+        s = db.timeseries.get_last_values("sensor1", ["temp", "ph"])
+        self.assertEqual(len(s), 2)
         temp = s[0]
-        self.assertEqual(temp[0].ts, 302 * 600 + 24 * 60 * 60)
-        self.assertEqual(temp[-1].ts, 501 * 600 + 24 * 60 * 60)
+        self.assertEqual(len(temp), 1)
+        self.assertEqual(temp[0].ts, t + 501 * 600 + 24 * 60 * 60)
         ph = s[1]
-        self.assertEqual(ph[0].ts, 302 * 600)
-        self.assertEqual(ph[-1].ts, 501 * 600)
+        self.assertEqual(len(ph), 1)
+        self.assertEqual(ph[0].ts, t + 501 * 600)
 
     def test_delete(self):
         db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
@@ -179,29 +184,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(len(r[1]), 5000)
         self.assertEqual(len(r[2]), 1)
 
-        s = db.timeseries.get_last_values("sensor47", ["act", "temp", "ph"], max_days=7, max_ts=start+600*5000)
-        act = s[0]
-        self.assertEqual(act[0].ts, start + 600 * 4999)
-        temp = s[1]
-        self.assertEqual(temp[0].ts, start + 600 * 4999)
-        ph = s[2]
-        self.assertEqual(len(ph), 0)
-
-        # s = db.timeseries.get_last_values("sensor47", ["act", "temp", "ph"], max_days=2, max_ts=start+600*10000)
-        # act = s[0]
-        # self.assertEqual(len(act), 0)
-        # temp = s[1]
-        # self.assertEqual(len(temp), 0)
-        # ph = s[2]
-        # self.assertEqual(len(ph), 0)
-
-        s = db.timeseries.get_last_values("sensor47", ["act", "temp", "ph"], max_days=100, max_ts=start+600*5000)
+        s = db.timeseries.get_last_values("sensor47", ["act", "temp", "ph"])
         act = s[0]
         self.assertEqual(act[0].ts, start + 600 * 4999)
         temp = s[1]
         self.assertEqual(temp[0].ts, start + 600 * 4999)
         ph = s[2]
         self.assertEqual(ph[0].ts, start)
-
-        # s = db.timeseries.get_last_values("sensor47", ["ph"], max_days=7, max_ts=start+600*10000)
-        # self.assertEqual(s[0][0], start)

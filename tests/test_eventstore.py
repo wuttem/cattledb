@@ -56,6 +56,7 @@ class EventStorageTest(unittest.TestCase):
         res = db.events.get_last_event("device1", "upload")
         self.assertEqual(res.name, "upload")
         self.assertEqual(res.key, "device1")
+        print(res)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].ts, pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp)
         self.assertEqual(res[0].value["foo4"], "bar4")

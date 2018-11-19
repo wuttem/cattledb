@@ -11,7 +11,7 @@ import struct
 from google.cloud import bigtable
 from google.auth.credentials import AnonymousCredentials
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter, FamilyNameRegexFilter, RowFilterChain, RowFilterUnion, RowKeyRegexFilter
-#from google.cloud.bigtable.row_set import RowSet
+from google.cloud.bigtable.row_set import RowSet
 #from google.oauth2 import service_account
 import google.auth
 
@@ -150,6 +150,8 @@ class Table(object):
 
     def read_row(self, row_id):
         res = self._low_level.read_row(row_id.encode("utf-8"), CellsColumnLimitFilter(1))
+        if res is None:
+            raise KeyError("row {} not found".format(row_id))
         return self.partial_row_to_dict(res)
 
     def delete_row(self, row_id, column_families=None):
@@ -177,55 +179,9 @@ class Table(object):
         return responses
 
 
-    def row_generator(self, row_keys=None, start_key=None, end_key=None, prefix=None,
-                      column_families=None):
-        if row_keys is None and (start_key is None or end_key is None) and prefix is None:
-            raise ValueError("use row_keys or start_key and end_key parameter")
-
-        filters = [CellsColumnLimitFilter(1)]
-        if column_families is not None:
-            c_filters = []
-            for c in column_families:
-                c_filters.append(FamilyNameRegexFilter(c))
-            if len(c_filters) == 1:
-                filters.append(c_filters[0])
-            elif len(c_filters) > 1:
-                filters.append(RowFilterUnion(c_filters))
-        if prefix:
-            reg = prefix.encode("utf-8")
-            filters.insert(0, RowKeyRegexFilter(reg))
-        filter_ = RowFilterChain(filters=filters)
-
-        result = []
-        if row_keys:
-            generator = []
-            for row_id in row_keys:
-                generator.append(self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_))
-        elif prefix:
-            if start_key is None:
-                start_key = prefix
-            generator = self._low_level.yield_rows(start_key=start_key.encode("utf-8"), filter_=filter_)
-        else:
-            raise RuntimeError("row range not implemented yet (bigtable v0.29)")
-
-        i = -1
-        for rowdata in generator:
-            i += 1
-            if rowdata is None:
-                if row_keys:
-                    yield (row_keys[i], {})
-                continue
-            rk = rowdata.row_key.decode("utf-8")
-            if prefix:
-                if not rk.startswith(prefix):
-                    break
-            curr_row_dict = self.partial_row_to_dict(rowdata)
-            yield (rk, curr_row_dict)
-
-    # TODO With Bigtable v0.31.1
-    # def row_generator_new(self, row_keys=None, start_key=None, end_key=None,
-    #                   column_families=None):
-    #     if row_keys is None and (start_key is None or end_key is None):
+    # def row_generator_old(self, row_keys=None, start_key=None, end_key=None, prefix=None,
+    #                       column_families=None):
+    #     if row_keys is None and (start_key is None or end_key is None) and prefix is None:
     #         raise ValueError("use row_keys or start_key and end_key parameter")
 
     #     filters = [CellsColumnLimitFilter(1)]
@@ -237,17 +193,22 @@ class Table(object):
     #             filters.append(c_filters[0])
     #         elif len(c_filters) > 1:
     #             filters.append(RowFilterUnion(c_filters))
+    #     if prefix:
+    #         reg = prefix.encode("utf-8")
+    #         filters.insert(0, RowKeyRegexFilter(reg))
     #     filter_ = RowFilterChain(filters=filters)
 
-    #     row_set = RowSet()
+    #     result = []
     #     if row_keys:
-    #         for r in row_keys:
-    #             row_set.add_row_key(r)
+    #         generator = []
+    #         for row_id in row_keys:
+    #             generator.append(self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_))
+    #     elif prefix:
+    #         if start_key is None:
+    #             start_key = prefix
+    #         generator = self._low_level.yield_rows(start_key=start_key.encode("utf-8"), filter_=filter_)
     #     else:
-    #         row_set.add_row_range_from_keys(start_key=start_key, end_key=end_key,
-    #                                         start_inclusive=True, end_inclusive=True)
-
-    #     generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
+    #         raise RuntimeError("row range not implemented yet (bigtable v0.29)")
 
     #     i = -1
     #     for rowdata in generator:
@@ -263,10 +224,91 @@ class Table(object):
     #         curr_row_dict = self.partial_row_to_dict(rowdata)
     #         yield (rk, curr_row_dict)
 
-    def read_rows(self, row_keys=None, start_key=None, end_key=None, prefix=None,
+    # def read_rows_old(self, row_keys=None, start_key=None, end_key=None, prefix=None,
+    #               column_families=None):
+    #     generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
+    #                                    prefix=prefix, column_families=column_families)
+
+    #     result = []
+    #     for rk, data in generator:
+    #         result.append((rk, data))
+    #     return result
+
+    # TODO With Bigtable v0.31.1
+    def row_generator(self, row_keys=None, start_key=None, end_key=None,
+                      column_families=None, check_prefix=None):
+        if row_keys is None and start_key is None:
+            raise ValueError("use row_keys or start_key parameter")
+        if start_key is not None and (end_key is None and check_prefix is None):
+            raise ValueError("use start_key together with end_key or check_prefix")
+
+        filters = [CellsColumnLimitFilter(1)]
+        if column_families is not None:
+            c_filters = []
+            for c in column_families:
+                c_filters.append(FamilyNameRegexFilter(c))
+            if len(c_filters) == 1:
+                filters.append(c_filters[0])
+            elif len(c_filters) > 1:
+                filters.append(RowFilterUnion(c_filters))
+        filter_ = RowFilterChain(filters=filters)
+
+        row_set = RowSet()
+        if row_keys:
+            for r in row_keys:
+                row_set.add_row_key(r)
+        else:
+            row_set.add_row_range_from_keys(start_key=start_key, end_key=end_key,
+                                            start_inclusive=True, end_inclusive=True)
+
+        generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
+
+        i = -1
+        for rowdata in generator:
+            i += 1
+            if rowdata is None:
+                if row_keys:
+                    yield (row_keys[i], {})
+                continue
+            rk = rowdata.row_key.decode("utf-8")
+            if check_prefix:
+                if not rk.startswith(check_prefix):
+                    break
+            curr_row_dict = self.partial_row_to_dict(rowdata)
+            yield (rk, curr_row_dict)
+
+    def get_first_row(self, row_key_prefix, column_families=None):
+        filters = [CellsColumnLimitFilter(1)]
+        if column_families is not None:
+            c_filters = []
+            for c in column_families:
+                c_filters.append(FamilyNameRegexFilter(c))
+            if len(c_filters) == 1:
+                filters.append(c_filters[0])
+            elif len(c_filters) > 1:
+                filters.append(RowFilterUnion(c_filters))
+        filter_ = RowFilterChain(filters=filters)
+
+        row_set = RowSet()
+        row_set.add_row_range_from_keys(start_key=row_key_prefix, start_inclusive=True)
+
+        generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
+
+        i = -1
+        for rowdata in generator:
+            i += 1
+            # if rowdata is None:
+            #     continue
+            rk = rowdata.row_key.decode("utf-8")
+            if not rk.startswith(row_key_prefix):
+                break
+            curr_row_dict = self.partial_row_to_dict(rowdata)
+            return (rk, curr_row_dict)
+
+    def read_rows(self, row_keys=None, start_key=None, end_key=None,
                   column_families=None):
         generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
-                                       prefix=prefix, column_families=column_families)
+                                       column_families=column_families)
 
         result = []
         for rk, data in generator:

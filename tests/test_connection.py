@@ -71,18 +71,23 @@ class ConnectionTest(unittest.TestCase):
         self.assertIn("p:k", res[1][1])
 
         res = table.read_rows(row_keys=["abc#2#1", "abc#3#1"], column_families=["i"])
-        self.assertEqual(len(res), 2)
+        self.assertEqual(len(res), 1)
         self.assertNotIn("p:k", res[0][1])
         self.assertIn("i:k", res[0][1])
-        self.assertNotIn("p:k", res[1][1])
-        self.assertNotIn("i:k", res[1][1])
 
-        res = table.read_rows(prefix="abc#2", column_families=["p"])
-        self.assertEqual(len(res), 3)
-        self.assertIn("p:k", res[0][1])
-        self.assertNotIn("i:k", res[0][1])
+        res = table.get_first_row("abc#", column_families=["i"])
+        self.assertEqual(res[0], "abc#2#1")
+        self.assertEqual(res[1]["i:k"], b"21")
 
-        res = table.read_rows(prefix="abc#2")
+        res = table.get_first_row("abc#3", column_families=["p"])
+        self.assertEqual(res[0], "abc#3#1")
+        self.assertEqual(res[1]["p:k"], b"31")
+
+        res = table.get_first_row("abc#3", column_families=["i"])
+        self.assertEqual(res, None)
+
+        res = table.read_rows(start_key="abc#2", end_key="abc#3#2")
+        self.assertEqual(len(res), 5)
+
+        res = table.read_rows(start_key="abc#2", end_key="abc#3#2", column_families=["i"])
         self.assertEqual(len(res), 3)
-        self.assertIn("p:k", res[0][1])
-        self.assertIn("i:k", res[0][1])
