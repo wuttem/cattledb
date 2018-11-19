@@ -110,28 +110,7 @@ class TimeSeriesServicer(TimeSeriesServicer):
             context.set_details('Invalid Request')
             return FloatTimeSeriesList()
 
-        if request.max_ts:
-            try:
-                max_dt = pendulum.parse(request.max_ts)
-            except ParserError:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("use iso-timestamp for max_ts")
-                return FloatTimeSeriesList()
-            max_ts = max_dt.int_timestamp
-        else:
-            max_ts = None
-
-        if request.count:
-            count = int(request.count)
-        else:
-            count = 1
-
-        if request.max_days:
-            max_days = int(request.max_days)
-        else:
-            max_days = 180
-
-        ts_list = self.db.timeseries.get_last_values(request.key, request.metrics, count=count, max_days=max_days, max_ts=max_ts)
+        ts_list = self.db.timeseries.get_last_values(request.key, request.metrics)
         l = FloatTimeSeriesList()
         l.data.extend([r.to_proto() for r in ts_list])
         return l
@@ -353,28 +332,7 @@ class EventsServicer(EventsServicer):
             context.set_details('Invalid Request')
             return EventSeries()
 
-        if request.max_ts:
-            try:
-                max_dt = pendulum.parse(request.max_ts)
-            except ParserError:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("use iso-timestamp for max_ts")
-                return EventSeries()
-            max_ts = max_dt.int_timestamp
-        else:
-            max_ts = None
-
-        if request.count:
-            count = int(request.count)
-        else:
-            count = 1
-
-        if request.max_days:
-            max_days = int(request.max_days)
-        else:
-            max_days = 180
-
-        ts = self.db.events.get_last_events(request.key, request.name, count=count, max_days=max_days, max_ts=max_ts)
+        ts = self.db.events.get_last_events(request.key, request.name)
         return ts.to_proto()
 
     def put(self, request, context):

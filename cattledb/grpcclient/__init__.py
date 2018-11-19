@@ -68,19 +68,8 @@ class CDBClient(object):
         res = self.timeseries.delete(req)
         return int(res.counter)
 
-    def get_last_values(self, key, metrics, max_ts=None, max_days=30, count=1):
-        if max_ts is not None:
-            max_ts = max_ts.isoformat()
-
-        if count > 5:
-            raise ValueError("can not use last_values for more than 5 points")
-
-        if max_days > 90:
-            raise ValueError("can not use last_values for data older than 90 days")
-
-        req = cdb_pb2.LastValuesRequest(key=key, metrics=metrics,
-                                        max_ts=max_ts, max_days=int(max_days),
-                                        count=int(count))
+    def get_last_values(self, key, metrics):
+        req = cdb_pb2.LastValuesRequest(key=key, metrics=metrics)
         ts = self.timeseries.lastValues(req)
         out = []
         for t in ts.data:
@@ -131,11 +120,8 @@ class CDBClient(object):
         ts = self.events.get(req)
         return EventList.from_proto(ts)
 
-    def get_last_events(self, key, name, max_ts=None, count=1):
-        if max_ts is not None:
-            max_ts = max_ts.isoformat()
-        req = cdb_pb2.LastEventsRequest(key=key, name=name,
-                                        max_ts=max_ts, count=count)
+    def get_last_events(self, key, name):
+        req = cdb_pb2.LastEventsRequest(key=key, name=name)
         ts = self.events.lastEvents(req)
         return EventList.from_proto(ts)
 
