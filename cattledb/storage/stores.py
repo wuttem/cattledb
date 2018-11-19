@@ -282,7 +282,6 @@ class ActivityStore(object):
         return out
 
     def get_activity_for_day(self, parent_id, day_ts):
-        #start_search_row = self.get_row_key(parent_id, day_ts)
         row_start_search = self.get_row_key(parent_id, day_ts)
         columns = ["c"]
 
@@ -295,17 +294,8 @@ class ActivityStore(object):
         # Start scanning
         row_gen = self.table().row_generator(start_key=row_start_search, column_families=columns,
                                              check_prefix=row_start_search)
-        # if row is not None:
-        # row = self.table().read_row(row_id)
-        # rowgen = self.table().row_generator(start_key=start_search_row, prefix=row_prefix,
-        #                                     column_families=columns)
 
         for row_key, data_dict in row_gen:
-        # for row_key, data_dict in rowgen:
-            # row_counter += 1
-            # Append to Activity
-            print(row_key)
-            print(data_dict)
             readout_id = row_key.split("#")[-1]
             row_keys.append(row_key)
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
@@ -569,16 +559,8 @@ class TimeSeriesStore(object):
         # Start scanning
         rowgen = self.table().row_generator(start_key=start_search_row,
                                             column_families=columns, end_key=end_search_row)
-        # i = 0
+
         for row_key, data_dict in rowgen:
-            # i += 1
-            # if i > max_days:
-            #     break
-
-            # Break if we get another deviceid
-            # if not row_key.startswith(row_prefix):
-            #     break
-
             row_keys.append(row_key)
 
             # Append to Timeseries

@@ -178,63 +178,6 @@ class Table(object):
                 raise ValueError("Bigtable upsert failed with: {} - {}".format(r.code, r.message))
         return responses
 
-
-    # def row_generator_old(self, row_keys=None, start_key=None, end_key=None, prefix=None,
-    #                       column_families=None):
-    #     if row_keys is None and (start_key is None or end_key is None) and prefix is None:
-    #         raise ValueError("use row_keys or start_key and end_key parameter")
-
-    #     filters = [CellsColumnLimitFilter(1)]
-    #     if column_families is not None:
-    #         c_filters = []
-    #         for c in column_families:
-    #             c_filters.append(FamilyNameRegexFilter(c))
-    #         if len(c_filters) == 1:
-    #             filters.append(c_filters[0])
-    #         elif len(c_filters) > 1:
-    #             filters.append(RowFilterUnion(c_filters))
-    #     if prefix:
-    #         reg = prefix.encode("utf-8")
-    #         filters.insert(0, RowKeyRegexFilter(reg))
-    #     filter_ = RowFilterChain(filters=filters)
-
-    #     result = []
-    #     if row_keys:
-    #         generator = []
-    #         for row_id in row_keys:
-    #             generator.append(self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_))
-    #     elif prefix:
-    #         if start_key is None:
-    #             start_key = prefix
-    #         generator = self._low_level.yield_rows(start_key=start_key.encode("utf-8"), filter_=filter_)
-    #     else:
-    #         raise RuntimeError("row range not implemented yet (bigtable v0.29)")
-
-    #     i = -1
-    #     for rowdata in generator:
-    #         i += 1
-    #         if rowdata is None:
-    #             if row_keys:
-    #                 yield (row_keys[i], {})
-    #             continue
-    #         rk = rowdata.row_key.decode("utf-8")
-    #         if prefix:
-    #             if not rk.startswith(prefix):
-    #                 break
-    #         curr_row_dict = self.partial_row_to_dict(rowdata)
-    #         yield (rk, curr_row_dict)
-
-    # def read_rows_old(self, row_keys=None, start_key=None, end_key=None, prefix=None,
-    #               column_families=None):
-    #     generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
-    #                                    prefix=prefix, column_families=column_families)
-
-    #     result = []
-    #     for rk, data in generator:
-    #         result.append((rk, data))
-    #     return result
-
-    # TODO With Bigtable v0.31.1
     def row_generator(self, row_keys=None, start_key=None, end_key=None,
                       column_families=None, check_prefix=None):
         if row_keys is None and start_key is None:
