@@ -523,7 +523,7 @@ class TimeSeriesStore(object):
                     continue
                 m = s[0]
                 if m != metric_object.id:
-                    raise ValueError(f"wrong metric in database {m} != {metric_object.id}")
+                    raise ValueError("wrong metric in database {} != {}".format(m, metric_object.id))
                 ts = int(s[1])
                 series.insert_storage_item(ts, value)
 
