@@ -1,22 +1,11 @@
 ## -*- docker-image-name: "spotify/bigtable-emulator" -*-
+FROM spotify/bigtable-emulator as emu
 
-FROM golang:1.7 as builder
-
-# Install netcat
-RUN apt-get update
-RUN apt-get install -y netcat
-
-# Get bigtable go package
-RUN go get -u cloud.google.com/go/bigtable
-RUN go get -d github.com/google/btree
-
-ADD bigtable-emu/bigtable-server.go /go/bin/bigtable-server.go
-RUN go build /go/bin/bigtable-server.go
-
+RUN ls /go
 
 FROM python:3.6
 
-COPY --from=builder /go /go
+COPY --from=emu /go /go
 COPY bigtable-emu/bigtable-server /etc/init.d/bigtable-server
 RUN  chmod 700 /etc/init.d/bigtable-server
 
