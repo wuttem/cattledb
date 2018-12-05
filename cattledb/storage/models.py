@@ -168,6 +168,14 @@ class TimeSeries(object):
         return -1
 
     @property
+    def first(self):
+        return None if self.empty() else self[0]
+
+    @property
+    def last(self):
+        return None if self.empty() else self[-1]
+
+    @property
     def count(self):
         return len(self._timestamps)
 
