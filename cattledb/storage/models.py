@@ -5,8 +5,8 @@ from builtins import str
 
 import sys
 from enum import Enum
-from collections import MutableSequence
-from collections import namedtuple
+from collections import MutableSequence, namedtuple, deque
+import itertools
 import pendulum
 from datetime import datetime
 import msgpack
@@ -27,6 +27,30 @@ from .helper import ts_weekly_left, ts_weekly_right
 from .helper import ts_monthly_left, ts_monthly_right
 
 
+class sliceable_deque(deque):
+    def __getitem__(self, index):
+        try:
+            return deque.__getitem__(self, index)
+        except TypeError:
+            start = index.start
+            if index.start is not None and index.start < 0:
+                start = len(self) + index.start
+
+            stop = index.stop
+            if index.stop is not None and index.stop < 0:
+                stop = len(self) + index.stop
+
+            if index.step is not None and index.step < 0:
+                if index.start is not None or index.stop is not None:
+                    raise ValueError("reverse iteration on slice is not possible")
+                step = abs(index.step)
+                sli = itertools.islice(self, start, stop, step)
+                return type(self)(reversed(type(self)(sli)))
+
+            sli = itertools.islice(self, start, stop, index.step)
+            return type(self)(sli)
+
+
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 
@@ -45,7 +69,7 @@ class TimeSeries(object):
     def __init__(self, key, metric, values=None, series_type=None):
         self._timestamps = array.array("I")
         self._timestamp_offsets = array.array("i")
-        self._values = list()
+        self._values = sliceable_deque()
         if series_type is None:
             self.series_type = self.DEFAULT_TYPE
         else:
@@ -77,7 +101,7 @@ class TimeSeries(object):
         i = cls(p.key, p.metric, series_type=series_type)
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
-        i._values = list(p.values)
+        i._values = sliceable_deque(p.values)
         i.check_series()
         return i
 
@@ -217,6 +241,12 @@ class TimeSeries(object):
             raise RuntimeError("Invalid series type or type miss match")
 
         idx = bisect.bisect_left(self._timestamps, timestamp)
+        # Prepend
+        if idx == 0:
+            self._timestamps.insert(0, timestamp)
+            self._values.appendleft(value)
+            self._timestamp_offsets.insert(0, offset)
+            return 1
         # Append
         if idx == len(self._timestamps):
             self._timestamps.append(timestamp)

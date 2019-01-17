@@ -8,10 +8,13 @@ import random
 import six
 import struct
 
+from collections import OrderedDict
+
 from google.cloud import bigtable
 from google.auth.credentials import AnonymousCredentials
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter, FamilyNameRegexFilter, RowFilterChain, RowFilterUnion, RowKeyRegexFilter
 from google.cloud.bigtable.row_set import RowSet
+from google.cloud._helpers import _to_bytes
 #from google.oauth2 import service_account
 import google.auth
 
@@ -135,6 +138,15 @@ class Table(object):
         self._low_level = low_level
 
     @classmethod
+    def partial_row_to_ordered_dict(cls, row_data):
+        result = OrderedDict()
+        for column_family_id, columns in six.iteritems(row_data._cells):
+            for column_qual, cells in six.iteritems(columns):
+                key = _to_bytes(column_family_id) + b":" + _to_bytes(column_qual)
+                result[key.decode("utf-8")] = cells[0].value
+        return result
+
+    @classmethod
     def partial_row_to_dict(cls, row_data):
         result = {}
         for cf, data in six.iteritems(row_data.to_dict()):
@@ -217,7 +229,7 @@ class Table(object):
             if check_prefix:
                 if not rk.startswith(check_prefix):
                     break
-            curr_row_dict = self.partial_row_to_dict(rowdata)
+            curr_row_dict = self.partial_row_to_ordered_dict(rowdata)
             yield (rk, curr_row_dict)
 
     def get_first_row(self, row_key_prefix, column_families=None):

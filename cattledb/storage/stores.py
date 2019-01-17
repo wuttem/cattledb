@@ -110,9 +110,10 @@ class MetaDataStore(object):
         timer = time.time()
 
         metadata = list()
-        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
 
-        for row_key, data_dict in res:
+        for row_key, data_dict in gen:
             o_name, o_id = row_key.split("#")
             d = dict()
             for k, value in six.iteritems(data_dict):
@@ -469,17 +470,18 @@ class TimeSeriesStore(object):
         columns = ["{}".format(m.id) for m in metric_objects]
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
-        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
 
-        for row_key, data_dict in res:
-            for k, value in six.iteritems(data_dict):
+        for row_key, data_dict in gen:
+            for k in reversed(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
                     continue
                 m = s[0]
                 if m in timeseries.keys():
                     ts = int(s[1])
-                    timeseries[m].insert_storage_item(ts, value)
+                    timeseries[m].insert_storage_item(ts, data_dict[k])
 
         out = []
         size = 0
@@ -716,10 +718,11 @@ class EventStore(object):
         row_keys = [self.get_row_key(key, name, ts) for ts in daily_timestamps(from_ts, to_ts)]
         columns = ["e"]
 
-        res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
+        gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
 
         events = EventList(key, name)
-        for row_key, data_dict in res:
+        for row_key, data_dict in gen:
             for k, value in six.iteritems(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
