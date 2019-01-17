@@ -12,6 +12,7 @@ from datetime import datetime
 import msgpack
 import struct
 import json
+import six
 
 import bisect
 import logging
@@ -69,7 +70,10 @@ class TimeSeries(object):
     def __init__(self, key, metric, values=None, series_type=None):
         self._timestamps = array.array("I")
         self._timestamp_offsets = array.array("i")
-        self._values = sliceable_deque()
+        if six.PY2:
+            self._values = list()
+        else:
+            self._values = sliceable_deque()
         if series_type is None:
             self.series_type = self.DEFAULT_TYPE
         else:
@@ -101,7 +105,10 @@ class TimeSeries(object):
         i = cls(p.key, p.metric, series_type=series_type)
         i._timestamps = array.array("I", p.timestamps)
         i._timestamp_offsets = array.array("i", p.timestamp_offsets)
-        i._values = sliceable_deque(p.values)
+        if six.PY2:
+            i._values = list(p.values)
+        else:
+            i._values = sliceable_deque(p.values)
         i.check_series()
         return i
 
@@ -242,7 +249,7 @@ class TimeSeries(object):
 
         idx = bisect.bisect_left(self._timestamps, timestamp)
         # Prepend
-        if idx == 0:
+        if not six.PY2 and idx == 0:
             self._timestamps.insert(0, timestamp)
             self._values.appendleft(value)
             self._timestamp_offsets.insert(0, offset)
