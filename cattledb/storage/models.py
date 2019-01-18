@@ -53,6 +53,7 @@ class sliceable_deque(deque):
 
 
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
+RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 
 TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
@@ -210,7 +211,9 @@ class TimeSeries(object):
     def count(self):
         return len(self._timestamps)
 
-    def _at(self, i):
+    def _at(self, i, raw=False):
+        if raw:
+            return RawPoint(self._timestamps[i], self._values[i], self._timestamp_offsets[i])
         dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
         return self.TYPE_WRAPPER(self._timestamps[i], self._values[i], dt)
 
@@ -362,15 +365,15 @@ class TimeSeries(object):
         self._values = self._values[:int(count)]
         self._timestamp_offsets = self._timestamp_offsets[:int(count)]
 
-    def all(self):
+    def all(self, raw=False):
         """Return an iterator to get all ts value pairs.
         """
         i = 0
         while i < len(self._timestamps):
-            yield self._at(i)
+            yield self._at(i, raw=raw)
             i += 1
 
-    def yield_range(self, ts_min, ts_max):
+    def yield_range(self, ts_min, ts_max, raw=False):
         """Return an iterator to get all ts value pairs in range.
         """
         low = bisect.bisect_left(self._timestamps, ts_min)
@@ -378,10 +381,10 @@ class TimeSeries(object):
 
         i = low
         while i < high:
-            yield self._at(i)
+            yield self._at(i, raw=raw)
             i += 1
 
-    def daily(self):
+    def daily(self, raw=False):
         """Generator to access daily data.
         This will return an inner generator.
         """
@@ -393,7 +396,7 @@ class TimeSeries(object):
             while (i + j < len(self._timestamps) and
                    lower_bound <= self._timestamps[i + j] <= upper_bound):
                 j += 1
-            yield (self._at(x) for x in range(i, i + j))
+            yield (self._at(x, raw=raw) for x in range(i, i + j))
             i += j
 
     def daily_storage_buckets(self):
@@ -436,7 +439,7 @@ class TimeSeries(object):
             yield self._serializable_at(i)
             i += 1
 
-    def hourly(self):
+    def hourly(self, raw=False):
         """Generator to access hourly data.
         This will return an inner generator.
         """
@@ -448,10 +451,10 @@ class TimeSeries(object):
             while (i + j < len(self._timestamps) and
                    lower_bound <= self._timestamps[i + j] <= upper_bound):
                 j += 1
-            yield (self._at(x) for x in range(i, i + j))
+            yield (self._at(x, raw=raw) for x in range(i, i + j))
             i += j
 
-    def aggregation(self, group="hourly", function="mean"):
+    def aggregation(self, group="hourly", function="mean", raw=False):
         """Aggregation Generator.
         """
         if group == "hourly":
@@ -482,13 +485,22 @@ class TimeSeries(object):
         else:
             raise ValueError("Invalid aggregation group")
 
-        for g in it():
-            t = list(g)
-            ts = left(t[0].ts)
-            offset = t[0].dt.offset
-            dt = pendulum.from_timestamp(ts, offset/3600.0)
-            value = func([x.value for x in t])
-            yield self.TYPE_WRAPPER(ts, value, dt)
+        if raw:
+            for g in it(raw=True):
+                t = list(g)
+                ts = left(t[0].ts)
+                offset = t[0].ts_offset
+                value = func([x.value for x in t])
+                yield RawPoint(ts, value, offset)
+        else:
+            for g in it(raw=True):
+                t = list(g)
+                ts = left(t[0].ts)
+                offset = t[0].ts_offset
+                #offset = t[0].dt.offset
+                dt = pendulum.from_timestamp(ts, offset/3600.0)
+                value = func([x.value for x in t])
+                yield self.TYPE_WRAPPER(ts, value, dt)
 
 
 class EventList(TimeSeries):
