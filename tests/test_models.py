@@ -3,6 +3,7 @@
 
 from __future__ import unicode_literals
 
+import six
 import unittest
 import random
 import logging
@@ -227,5 +228,6 @@ class ModelTest(unittest.TestCase):
         print(l12)
         self.assertEqual(l11, l12)
 
-        with self.assertRaises(ValueError):
-            list(sliceable_deque(l2[30:10:-1]))
+        if not six.PY2:
+            with self.assertRaises(ValueError):
+                list(sliceable_deque(l2[30:10:-1]))

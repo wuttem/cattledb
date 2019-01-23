@@ -28,7 +28,7 @@ from .helper import ts_weekly_left, ts_weekly_right
 from .helper import ts_monthly_left, ts_monthly_right
 
 
-class sliceable_deque(deque):
+class _sliceable_deque(deque):
     def __getitem__(self, index):
         try:
             return deque.__getitem__(self, index)
@@ -51,6 +51,15 @@ class sliceable_deque(deque):
             sli = itertools.islice(self, start, stop, index.step)
             return type(self)(sli)
 
+class _list(list):
+    def appendleft(self, item):
+        return self.insert(0, item)
+
+if six.PY2:
+    sliceable_deque = _list
+else:
+    sliceable_deque = _sliceable_deque
+
 
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
 RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
@@ -64,17 +73,25 @@ class SeriesType(Enum):
     DICTSERIES = 2
 
 
+class TimeSeriesKeyWrapper:
+    key_getter = lambda c: c.ts
+
+    def __init__(self, timeseries):
+        self.timeseries = timeseries
+
+    def __getitem__(self, i):
+        return self.timeseries._data[i].ts
+
+    def __len__(self):
+        return len(self.timeseries)
+
+
 class TimeSeries(object):
     DEFAULT_TYPE = SeriesType.FLOATSERIES
     TYPE_WRAPPER = Point
 
     def __init__(self, key, metric, values=None, series_type=None):
-        self._timestamps = array.array("I")
-        self._timestamp_offsets = array.array("i")
-        if six.PY2:
-            self._values = list()
-        else:
-            self._values = sliceable_deque()
+        self._data = sliceable_deque()
         if series_type is None:
             self.series_type = self.DEFAULT_TYPE
         else:
@@ -104,12 +121,11 @@ class TimeSeries(object):
         if series_type is None:
             series_type = cls.DEFAULT_TYPE
         i = cls(p.key, p.metric, series_type=series_type)
-        i._timestamps = array.array("I", p.timestamps)
-        i._timestamp_offsets = array.array("i", p.timestamp_offsets)
-        if six.PY2:
-            i._values = list(p.values)
-        else:
-            i._values = sliceable_deque(p.values)
+        i._data = sliceable_deque(map(RawPoint._make, 
+                                      zip(
+                                          p.timestamps,
+                                          p.values,
+                                          p.timestamp_offsets)))
         i.check_series()
         return i
 
@@ -118,7 +134,7 @@ class TimeSeries(object):
         return cls(key, metric, values)
 
     def __len__(self):
-        return len(self._timestamps)
+        return len(self._data)
 
     def empty(self):
         if len(self) < 1:
@@ -126,7 +142,6 @@ class TimeSeries(object):
         return False
 
     def check_series(self):
-        assert len(self._timestamps) == len(self._values) == len(self._timestamp_offsets)
         if len(self) > 0:
             self.check_sorted()
 
@@ -137,12 +152,12 @@ class TimeSeries(object):
         return False
 
     def check_sorted(self):
-        it = iter(self._timestamps)
+        it = iter(self._data)
         if (sys.version_info > (3, 0)):
             it.__next__()
         else:
             it.next()
-        assert all(b >= a for a, b in zip(self._timestamps, it))
+        assert all(b.ts >= a.ts for a, b in zip(self._data, it))
 
     def to_hash(self):
         s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self),
@@ -171,17 +186,15 @@ class TimeSeries(object):
         assert self.metric == other.metric
         assert self.series_type == other.series_type
 
-        self._timestamps += other._timestamps
-        self._timestamp_offsets += other._timestamp_offsets
-        self._values += other._values
+        self._data += other._data
 
     def __ne__(self, other):
         return not self == other  # NOT return not self.__eq__(other)
 
     def __repr__(self):
-        l = len(self._timestamps)
+        l = len(self._data)
         if l > 0:
-            m = self._timestamps[0]
+            m = self._data[0].ts
         else:
             m = -1
         return "<{}.{} series({}), min_ts: {}>".format(
@@ -189,14 +202,14 @@ class TimeSeries(object):
 
     @property
     def ts_max(self):
-        if len(self._timestamps) > 0:
-            return self._timestamps[-1]
+        if len(self._data) > 0:
+            return self._data[-1].ts
         return -1
 
     @property
     def ts_min(self):
-        if len(self._timestamps) > 0:
-            return self._timestamps[0]
+        if len(self._data) > 0:
+            return self._data[0].ts
         return -1
 
     @property
@@ -209,35 +222,52 @@ class TimeSeries(object):
 
     @property
     def count(self):
-        return len(self._timestamps)
+        return len(self._data)
 
     def _at(self, i, raw=False):
         if raw:
-            return RawPoint(self._timestamps[i], self._values[i], self._timestamp_offsets[i])
-        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
-        return self.TYPE_WRAPPER(self._timestamps[i], self._values[i], dt)
+            return self._data[i]
+        dt = pendulum.from_timestamp(self._data[i].ts, self._data[i].ts_offset/3600.0)
+        return self.TYPE_WRAPPER(self._data[i].ts, self._data[i].value, dt)
 
     def _storage_item_at(self, i):
         if self.series_type == SeriesType.FLOATSERIES:
-            by = struct.pack("B", 1) + struct.pack("i", self._timestamp_offsets[i]) + struct.pack("f", self._values[i])
+            by = struct.pack("B", 1) + struct.pack("i", self._data[i].ts_offset) + struct.pack("f", self._data[i].value)
         elif self.series_type == SeriesType.DICTSERIES:
-            by = struct.pack("B", 2) + struct.pack("i", self._timestamp_offsets[i]) + msgpack.packb(self._values[i], use_bin_type=True)
+            by = struct.pack("B", 2) + struct.pack("i", self._data[i].ts_offset) + msgpack.packb(self._data[i].value, use_bin_type=True)
         else:
             raise NotImplementedError("wrong series type")
-        return (self._timestamps[i], by)
+        return (self._data[i].ts, by)
 
     def _serializable_at(self, i):
-        dt = pendulum.from_timestamp(self._timestamps[i], self._timestamp_offsets[i]/3600.0)
-        return (dt.isoformat(), self._values[i])
+        dt = pendulum.from_timestamp(self._data[i].ts, self._data[i].ts_offset/3600.0)
+        return (dt.isoformat(), self._data[i].value)
 
     def __getitem__(self, key):
         return self._at(key)
 
     def to_list(self):
         out = list()
-        for i in range(len(self._timestamps)):
+        for i in range(len(self._data)):
             out.append(self._at(i))
         return out
+
+    def ts_iterator(self):
+        return TimeSeriesKeyWrapper(self)
+
+    def bisect_left(self, timestamp):
+        if len(self._data) < 1 or timestamp < self.ts_min:
+            return 0
+        elif timestamp > self.ts_max:
+            return len(self._data)
+        return bisect.bisect_left(self.ts_iterator(), timestamp)
+
+    def bisect_right(self, timestamp):
+        if len(self._data) < 1 or timestamp < self.ts_min:
+            return 0
+        elif timestamp > self.ts_max:
+            return len(self._data)
+        return bisect.bisect_right(self.ts_iterator(), timestamp)
 
     def insert_storage_item(self, timestamp, by, overwrite=False):
         f = int(struct.unpack("B", by[0:1])[0])
@@ -250,32 +280,26 @@ class TimeSeries(object):
         else:
             raise RuntimeError("Invalid series type or type miss match")
 
-        idx = bisect.bisect_left(self._timestamps, timestamp)
+        idx = self.bisect_left(timestamp)
+
         # Prepend
-        if not six.PY2 and idx == 0:
-            self._timestamps.insert(0, timestamp)
-            self._values.appendleft(value)
-            self._timestamp_offsets.insert(0, offset)
+        if idx == 0:
+            self._data.appendleft(RawPoint(timestamp, value, offset))
             return 1
         # Append
-        if idx == len(self._timestamps):
-            self._timestamps.append(timestamp)
-            self._values.append(value)
-            self._timestamp_offsets.append(offset)
+        if idx == len(self._data):
+            self._data.append(RawPoint(timestamp, value, offset))
             return 1
         # Already Existing
-        if self._timestamps[idx] == timestamp:
+        if self._data[idx].ts == timestamp:
             # Replace
             logging.debug("duplicate insert")
             if overwrite:
-                self._timestamp_offsets[idx] = offset
-                self._values[idx] = value
+                self._data[idx] = RawPoint(timestamp, value, offset)
                 return 1
             return 0
         # Insert
-        self._timestamps.insert(idx, timestamp)
-        self._values.insert(idx, value)
-        self._timestamp_offsets.insert(idx, offset)
+        self._data.insert(idx, RawPoint(timestamp, value, offset))
         return 1
 
     def insert_point(self, dt, value, overwrite=False):
@@ -301,32 +325,29 @@ class TimeSeries(object):
         else:
             raise ValueError("Invalid TS format: %s", dt)
 
-        idx = bisect.bisect_left(self._timestamps, timestamp)
+        idx = self.bisect_left(timestamp)
+
         # Force Float
         if self.series_type == SeriesType.FLOATSERIES:
             value = float(value)
         # Force Dict
         if self.series_type == SeriesType.DICTSERIES:
             value = dict(value)
+
         # Append
-        if idx == len(self._timestamps):
-            self._timestamps.append(timestamp)
-            self._values.append(value)
-            self._timestamp_offsets.append(offset)
+        if idx == len(self._data):
+            self._data.append(RawPoint(timestamp, value, offset))
             return 1
         # Already Existing
-        if self._timestamps[idx] == timestamp:
+        if self._data[idx].ts == timestamp:
             # Replace
             logging.debug("duplicate insert")
             if overwrite:
-                self._timestamp_offsets[idx] = offset
-                self._values[idx] = value
+                self._data[idx] = RawPoint(timestamp, value, offset)
                 return 1
             return 0
         # Insert
-        self._timestamps.insert(idx, timestamp)
-        self._values.insert(idx, value)
-        self._timestamp_offsets.insert(idx, offset)
+        self._data.insert(idx, RawPoint(timestamp, value, offset))
         return 1
 
     def insert(self, series):
@@ -337,47 +358,41 @@ class TimeSeries(object):
         return counter
 
     def get_index_below_ts(self, ts):
-        if self.empty():
+        idx = self.bisect_left(ts) - 1
+        if idx >= len(self._data):
             return None
-        low = bisect.bisect_left(self._timestamps, ts) - 1
-        if low >= 0:
-            return low
+        if idx >= 0:
+            return idx
         return None
 
     def trim(self, ts_min, ts_max):
-        low = bisect.bisect_left(self._timestamps, ts_min)
-        high = bisect.bisect_right(self._timestamps, ts_max)
-        self._timestamps = self._timestamps[low:high]
-        self._values = self._values[low:high]
-        self._timestamp_offsets = self._timestamp_offsets[low:high]
+        low = self.bisect_left(ts_min)
+        high = self.bisect_right(ts_max)
+        self._data = self._data[low:high]
 
     def trim_count_newest(self, count):
         if len(self) <= count:
             return
-        self._timestamps = self._timestamps[-int(count):]
-        self._values = self._values[-int(count):]
-        self._timestamp_offsets = self._timestamp_offsets[-int(count):]
+        self._data = self._data[-int(count):]
 
     def trim_count_oldest(self, count):
         if len(self) <= count:
             return
-        self._timestamps = self._timestamps[:int(count)]
-        self._values = self._values[:int(count)]
-        self._timestamp_offsets = self._timestamp_offsets[:int(count)]
+        self._data = self._data[:int(count)]
 
     def all(self, raw=False):
         """Return an iterator to get all ts value pairs.
         """
         i = 0
-        while i < len(self._timestamps):
+        while i < len(self._data):
             yield self._at(i, raw=raw)
             i += 1
 
     def yield_range(self, ts_min, ts_max, raw=False):
         """Return an iterator to get all ts value pairs in range.
         """
-        low = bisect.bisect_left(self._timestamps, ts_min)
-        high = bisect.bisect_right(self._timestamps, ts_max)
+        low = self.bisect_left(ts_min)
+        high = self.bisect_right(ts_max)
 
         i = low
         while i < high:
@@ -389,44 +404,46 @@ class TimeSeries(object):
         This will return an inner generator.
         """
         i = 0
-        while i < len(self._timestamps):
+        while i < len(self._data):
             j = 0
-            lower_bound = ts_daily_left(self._timestamps[i])
-            upper_bound = ts_daily_right(self._timestamps[i])
-            while (i + j < len(self._timestamps) and
-                   lower_bound <= self._timestamps[i + j] <= upper_bound):
+            lower_bound = ts_daily_left(self._data[i].ts)
+            upper_bound = ts_daily_right(self._data[i].ts)
+            while (i + j < len(self._data) and
+                   lower_bound <= self._data[i + j].ts <= upper_bound):
                 j += 1
             yield (self._at(x, raw=raw) for x in range(i, i + j))
             i += j
 
     def daily_storage_buckets(self):
         i = 0
-        while i < len(self._timestamps):
+        while i < len(self._data):
             j = 0
-            lower_bound = ts_daily_left(self._timestamps[i])
-            upper_bound = ts_daily_right(self._timestamps[i])
-            while (i + j < len(self._timestamps) and
-                   lower_bound <= self._timestamps[i + j] <= upper_bound):
+            lower_bound = ts_daily_left(self._data[i].ts)
+            upper_bound = ts_daily_right(self._data[i].ts)
+            while (i + j < len(self._data) and
+                   lower_bound <= self._data[i + j].ts <= upper_bound):
                 j += 1
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
     def to_proto(self):
+        timestamps, values, timestamp_offsets = zip(*self._data)
+
         if self.series_type == SeriesType.FLOATSERIES:
             ts = FloatTimeSeries()
-            ts.values.extend(self._values)
+            ts.values.extend(values)
         elif self.series_type == SeriesType.DICTSERIES:
             ts = DictTimeSeries()
             proto_dicts = []
-            for v in self._values:
+            for v in values:
                 proto_dicts.append(SerializableDict(v).to_proto())
             ts.values.extend(proto_dicts)
         else:
             raise NotImplementedError("wrong series type")
         ts.metric = self.metric
         ts.key = self.key
-        ts.timestamps.extend(self._timestamps)
-        ts.timestamp_offsets.extend(self._timestamp_offsets)
+        ts.timestamps.extend(timestamps)
+        ts.timestamp_offsets.extend(timestamp_offsets)
         return ts
 
     def to_proto_bytes(self):
@@ -435,7 +452,7 @@ class TimeSeries(object):
 
     def to_serializable(self):
         i = 0
-        while i < len(self._timestamps):
+        while i < len(self._data):
             yield self._serializable_at(i)
             i += 1
 
@@ -444,12 +461,12 @@ class TimeSeries(object):
         This will return an inner generator.
         """
         i = 0
-        while i < len(self._timestamps):
+        while i < len(self._data):
             j = 0
-            lower_bound = ts_hourly_left(self._timestamps[i])
-            upper_bound = ts_hourly_right(self._timestamps[i])
-            while (i + j < len(self._timestamps) and
-                   lower_bound <= self._timestamps[i + j] <= upper_bound):
+            lower_bound = ts_hourly_left(self._data[i].ts)
+            upper_bound = ts_hourly_right(self._data[i].ts)
+            while (i + j < len(self._data) and
+                   lower_bound <= self._data[i + j].ts <= upper_bound):
                 j += 1
             yield (self._at(x, raw=raw) for x in range(i, i + j))
             i += j
@@ -517,9 +534,11 @@ class EventList(TimeSeries):
     @classmethod
     def from_proto(cls, p):
         i = cls(p.key, p.name)
-        i._timestamps = array.array("I", p.timestamps)
-        i._timestamp_offsets = array.array("i", p.timestamp_offsets)
-        i._values = [SerializableDict.from_proto(x) for x in p.values]
+        i._data = sliceable_deque(map(RawPoint._make, 
+                                      zip(
+                                          p.timestamps,
+                                          [SerializableDict.from_proto(x) for x in p.values],
+                                          p.timestamp_offsets)))
         i.check_series()
         return i
 

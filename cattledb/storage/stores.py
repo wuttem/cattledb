@@ -467,11 +467,14 @@ class TimeSeriesStore(object):
         metric_objects = [self.get_metric_object(m) for m in metrics]
 
         row_keys = [self.get_row_key(key, ts) for ts in daily_timestamps(from_ts, to_ts)]
+        first_key = self.get_row_key(key, to_ts)
+        last_key = self.get_row_key(key, from_ts)
         columns = ["{}".format(m.id) for m in metric_objects]
 
         timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
         #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
-        gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
+        #gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
+        gen = self.table().row_generator(start_key=first_key, end_key=last_key, column_families=columns)
 
         for row_key, data_dict in gen:
             for k in reversed(data_dict):
