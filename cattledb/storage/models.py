@@ -456,6 +456,21 @@ class TimeSeries(object):
             yield self._serializable_at(i)
             i += 1
 
+    def aligned_10minute(self, raw=False):
+        """Generator to data aligned to 10min period.
+        This will return an inner generator.
+        """
+        i = 0
+        while i < len(self._data):
+            j = 0
+            lower_bound = self._data[i].ts - (self._data[i].ts % (10*60))
+            upper_bound = lower_bound + 10*60 - 1
+            while (i + j < len(self._data) and
+                   lower_bound <= self._data[i + j].ts <= upper_bound):
+                j += 1
+            yield (self._at(x, raw=raw) for x in range(i, i + j))
+            i += j
+
     def hourly(self, raw=False):
         """Generator to access hourly data.
         This will return an inner generator.
@@ -480,6 +495,9 @@ class TimeSeries(object):
         elif group == "daily":
             it = self.daily
             left = ts_daily_left
+        elif group == "10min":
+            it = self.aligned_10minute
+            left = lambda x: x - (x % (10*60))
         else:
             raise ValueError("Invalid aggregation group")
 
@@ -497,6 +515,8 @@ class TimeSeries(object):
             func = amp
         elif function == "mean":
             def mean(x):
+                if len(x) == 1:
+                    return x[0]
                 return sum(x) / len(x)
             func = mean
         else:
