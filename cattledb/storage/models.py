@@ -426,8 +426,16 @@ class TimeSeries(object):
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
+    def to_lists(self):
+        if len(self) > 0:
+            timestamps, values, timestamp_offsets = zip(*self._data)
+        else:
+            timestamps, values, timestamp_offsets = [], [], []
+        return timestamps, values, timestamp_offsets
+
     def to_proto(self):
-        timestamps, values, timestamp_offsets = zip(*self._data)
+        print(self._data)
+        timestamps, values, timestamp_offsets = self.to_lists()
 
         if self.series_type == SeriesType.FLOATSERIES:
             ts = FloatTimeSeries()
