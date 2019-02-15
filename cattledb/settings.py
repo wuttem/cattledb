@@ -7,11 +7,17 @@ from enum import Enum
 from collections import namedtuple
 
 MetricDefinition = namedtuple('MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
+EventDefinition = namedtuple('EventDefinition', ['name', "type", "resolution"])
 
 
 class MetricType(Enum):
     FLOATSERIES = 1
     DICTSERIES = 2
+
+
+class EventSeriesType(Enum):
+    DAILY = 1
+    MONTHLY = 2
 
 
 class Resolution(Enum):
@@ -38,6 +44,11 @@ AVAILABLE_METRICS = [
     MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
     MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
     MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE)
+]
+
+EVENT_TYPES = [
+    EventDefinition("test_daily", EventSeriesType.DAILY, Resolution.SECOND),
+    EventDefinition("test_monthly", EventSeriesType.MONTHLY, Resolution.MINUTE)
 ]
 
 
@@ -72,6 +83,7 @@ class BaseConfig(object):
     }
 
     METRICS = AVAILABLE_METRICS
+    EVENTS = EVENT_TYPES
 
 class DevelopmentConfig(BaseConfig):
     pass
@@ -96,24 +108,3 @@ available_configs = {
     "staging": StagingConfig,
     "default": DevelopmentConfig
 }
-
-
-AVAILABLE_METRICS = [
-    MetricDefinition("test", "test", MetricType.FLOATSERIES, True, True, Resolution.SECOND),
-
-    # Raw Metrics
-    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-
-    # Stage 1
-    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("act", "act", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE)
-]

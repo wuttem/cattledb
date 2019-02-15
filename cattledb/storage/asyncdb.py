@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 
 class AsyncDB(object):
     def __init__(self, project_id, instance_id, loop=None, read_only=False, pool_size=8, table_prefix="cdb",
-                 credentials=None, metric_definition=None):
+                 credentials=None, metric_definition=None, event_definitions=None):
         from .connection import Connection as Connection
         self.db = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
                              pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                             metric_definition=metric_definition)
+                             metric_definition=metric_definition, event_definitions=event_definitions)
 
         self.pool = concurrent.futures.ThreadPoolExecutor(max_workers=pool_size*2)
         if loop is None:

@@ -2,20 +2,8 @@
 # coding: utf8
 from __future__ import unicode_literals
 
-from enum import Enum
 from collections import defaultdict
 from ..storage.models import TimeSeries, SeriesType
-
-
-class HoleState(Enum):
-    UNKNOWN = 0
-    APPENDED_NO_HOLE = 1
-    APPENDED_HOLE_BEFORE = 2
-    INSERTED_HOLE_CREATED = 3
-    INSERTED_HOLE = 4
-    INSERTED_HOLE_FILLED = 5
-    INSERTED_OVERWRITE = 6
-
 
 
 class CacheMiss(KeyError):
@@ -51,7 +39,6 @@ class BoundedTimeSeries(TimeSeries):
         res = self.insert_point(dt, value, overwrite=overwrite)
         if res != 0:
             self.trim_to_bound()
-        return HoleState.UNKNOWN
 
 
 class TimeSeriesCache(object):

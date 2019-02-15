@@ -52,13 +52,13 @@ class CDBClient(object):
     _enforce_read_only = True
 
     def __init__(self, project_id, instance_id, credentials, table_prefix, metric_definition,
-                 pool_size=1, read_only=True):
+                 pool_size=1, read_only=True, event_definitions=None):
         if CDBClient._enforce_read_only and not read_only:
             raise RuntimeError("Direct CDBClient only allowed for read_only access")
         self.read_only = read_only
         self.db = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
                              pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                             metric_definition=metric_definition)
+                             metric_definition=metric_definition, event_definitions=event_definitions)
 
     def raise_on_read_only(self):
         if self.read_only:

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class Connection(object):
     def __init__(self, project_id, instance_id, read_only=False, pool_size=8, table_prefix="mycdb",
-                 credentials=None, metric_definition=None):
+                 credentials=None, metric_definition=None, event_definitions=None):
         self.project_id = project_id
         self.instance_id = instance_id
         self.read_only = read_only
@@ -47,6 +47,10 @@ class Connection(object):
         if metric_definition is not None:
             self.metrics += metric_definition
 
+        self.event_definitions = []
+        if event_definitions is not None:
+            self.event_definitions += event_definitions
+
         # Register Default Data Stores
         from .stores import TimeSeriesStore
         self.timeseries = TimeSeriesStore(self)
@@ -64,7 +68,8 @@ class Connection(object):
     def clone(self):
         return Connection(self.project_id, self.instance_id, read_only=self.read_only,
                           pool_size=self.pool_size, table_prefix=self.table_prefix,
-                          credentials=self.credentials, metric_definition=self.metrics)
+                          credentials=self.credentials, metric_definition=self.metrics,
+                          event_definitions=self.event_definitions)
 
     def create_instance(self, admin=False):
         return bigtable.Client(project=self.project_id, admin=admin,

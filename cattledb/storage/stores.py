@@ -13,8 +13,9 @@ from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
 
-from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names
-from .models import TimeSeries, EventList, MetaDataItem, SerializableDict, ReaderActivityItem, DeviceActivityItem, RowUpsert
+from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names, monthly_timestamps
+from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict,
+                     ReaderActivityItem, DeviceActivityItem, RowUpsert, EventSeriesType)
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 
 
@@ -631,13 +632,24 @@ class TimeSeriesStore(object):
         return count
 
 class EventStore(object):
+    """
+    Event Store.
+
+    For storing variable Timeseries Data.
+    There is a store with daily and a store with monthly rows.
+    For daily rows one event every second is possible.
+    For monthly rows one event every minute is possible.
+    """
     TABLENAME = "events"
     TABLEOPTIONS = {}
     STOREID = "events"
-    MAX_GET_SIZE = 45 * 24 * 60 * 60
+    MAX_GET_SIZE_DAILY = 45 * 24 * 60 * 60
+    MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 *60
+    DEFAULT_SERIES_TYPE = EventSeriesType.MONTHLY
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
+        self.EVENTS = self.connection_object.event_definitions
 
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
@@ -664,18 +676,42 @@ class EventStore(object):
 
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
+    def get_type_for_name(self, name):
+        return EventSeriesType.DAILY
+
     @classmethod
     def reverse_day_key(cls, ts):
         time_tuple = time.gmtime(ts)
         y = 5000 - int(time_tuple.tm_year)
         m = 50 - int(time_tuple.tm_mon)
         d = 50 - int(time_tuple.tm_mday)
-        return "{:04d}{:02d}{:02d}".format(y,m,d)
+        return "{:04d}{:02d}{:02d}".format(y, m, d)
 
     @classmethod
-    def get_row_key(cls, base_key, name, day_ts):
-        reverse_day_ts = cls.reverse_day_key(day_ts)
-        row_key = "{}#{}#{}".format(base_key, name, reverse_day_ts)
+    def reverse_month_key(cls, ts):
+        time_tuple = time.gmtime(ts)
+        y = 5000 - int(time_tuple.tm_year)
+        m = 50 - int(time_tuple.tm_mon)
+        return "{:04d}{:02d}".format(y, m)
+
+    def get_row_key(self, base_key, name, day_ts):
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            row_key = "{}#{}#{}".format(base_key, name, self.reverse_day_key(day_ts))
+        elif t == EventSeriesType.MONTHLY:
+            row_key = "{}#m_{}#{}".format(base_key, name, self.reverse_month_key(day_ts))
+        else:
+            raise ValueError("invalid EventSeriesType")
+        return row_key
+
+    def get_row_key_base(self, base_key, name):
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            row_key = "{}#{}#".format(base_key, name)
+        elif t == EventSeriesType.MONTHLY:
+            row_key = "{}#m_{}#".format(base_key, name)
+        else:
+            raise ValueError("invalid EventSeriesType")
         return row_key
 
     def insert_events(self, event_list):
@@ -689,8 +725,18 @@ class EventStore(object):
         timer = time.time()
         row_keys = []
         upserts = []
-        for day, bucket in event_list.daily_storage_buckets():
-            row_key = self.get_row_key(key, name, day)
+
+        # Monthly or Daily
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            it = event_list.daily_storage_buckets()
+        elif t == EventSeriesType.MONTHLY:
+            it = event_list.monthly_storage_buckets()
+        else:
+            raise ValueError("invalid EventSeriesType")
+        
+        for ts, bucket in it:
+            row_key = self.get_row_key(key, name, ts)
             row_keys.append(row_key)
             data = {}
             for timestamp, val in bucket:
@@ -713,12 +759,30 @@ class EventStore(object):
     def insert_event(self, key, name, dt, data):
         return self.insert_events(EventList(key, name, [(dt, data)]))
 
+    def max_get_size(self, name):
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            return self.MAX_GET_SIZE_DAILY
+        elif t == EventSeriesType.MONTHLY:
+            return self.MAY_GET_SIZE_MONTHLY
+        else:
+            raise ValueError("invalid EventSeriesType")
+
     def get_events(self, key, name, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.MAX_GET_SIZE
+        assert to_ts - from_ts < self.max_get_size(name)
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, name, ts) for ts in daily_timestamps(from_ts, to_ts)]
+        # Monthly or Daily
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            it = daily_timestamps(from_ts, to_ts)
+        elif t == EventSeriesType.MONTHLY:
+            it = monthly_timestamps(from_ts, to_ts)
+        else:
+            raise ValueError("invalid EventSeriesType")
+
+        row_keys = [self.get_row_key(key, name, ts) for ts in it]
         columns = ["e"]
 
         #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
@@ -750,7 +814,7 @@ class EventStore(object):
 
     def get_last_events(self, key, name, count=1):
         assert count == 1
-        row_prefix = "{}#{}#".format(key, name)
+        row_prefix = self.get_row_key_base(key, name)
         columns = ["e"]
 
         timer = time.time()
@@ -790,7 +854,16 @@ class EventStore(object):
         assert from_ts <= to_ts
         timer = time.time()
 
-        row_keys = [self.get_row_key(key, name, ts) for ts in daily_timestamps(from_ts, to_ts)]
+        # Monthly or Daily
+        t = self.get_type_for_name(name)
+        if t == EventSeriesType.DAILY:
+            it = daily_timestamps(from_ts, to_ts)
+        elif t == EventSeriesType.MONTHLY:
+            it = monthly_timestamps(from_ts, to_ts)
+        else:
+            raise ValueError("invalid EventSeriesType")
+
+        row_keys = [self.get_row_key(key, name, ts) for ts in it]
 
         table = self.table()
         for row_key in row_keys:

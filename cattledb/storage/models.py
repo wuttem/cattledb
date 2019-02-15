@@ -18,7 +18,6 @@ import bisect
 import logging
 import array
 import hashlib
-from enum import Enum
 
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity
 
@@ -68,9 +67,15 @@ MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "d
 TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
 
+
 class SeriesType(Enum):
     FLOATSERIES = 1
     DICTSERIES = 2
+
+
+class EventSeriesType(Enum):
+    DAILY = 1
+    MONTHLY = 2
 
 
 class TimeSeriesKeyWrapper:
@@ -412,6 +417,18 @@ class TimeSeries(object):
                    lower_bound <= self._data[i + j].ts <= upper_bound):
                 j += 1
             yield (self._at(x, raw=raw) for x in range(i, i + j))
+            i += j
+
+    def monthly_storage_buckets(self):
+        i = 0
+        while i < len(self._data):
+            j = 0
+            lower_bound = ts_monthly_left(self._data[i].ts)
+            upper_bound = ts_monthly_right(self._data[i].ts)
+            while (i + j < len(self._data) and
+                   lower_bound <= self._data[i + j].ts <= upper_bound):
+                j += 1
+            yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
     def daily_storage_buckets(self):

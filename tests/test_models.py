@@ -5,13 +5,17 @@ from __future__ import unicode_literals
 
 import six
 import unittest
+import pendulum
 import random
 import logging
 import binascii
 import datetime
 
 from cattledb.storage.models import TimeSeries, SerializableDict, SeriesType, sliceable_deque
-from cattledb.storage.helper import to_ts, daily_timestamps
+from cattledb.storage.helper import (to_ts, daily_timestamps, monthly_timestamps,
+                                     ts_daily_left, ts_daily_right,
+                                     ts_weekly_left, ts_weekly_right,
+                                     ts_monthly_left, ts_monthly_right)
 from cattledb.grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary
 
 
@@ -166,6 +170,48 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(x, [0, 86400])
         x = list(daily_timestamps(0, 2*24*60*60))
         self.assertEqual(x, [0, 86400, 2*24*60*60])
+
+    def test_monthly_timestamps(self):
+        x = list(monthly_timestamps(0, 0))
+        self.assertEqual(x, [0])
+        x = list(monthly_timestamps(0, 31*24*60*60-1))
+        self.assertEqual(x, [0])
+        x = list(monthly_timestamps(0, 31*24*60*60))
+        self.assertEqual(x, [0, 31*24*60*60])
+        x = list(monthly_timestamps(0, (31+27)*24*60*60))
+        self.assertEqual(x, [0, 31*24*60*60])
+        x = list(monthly_timestamps(0, (31+28)*24*60*60-1))
+        self.assertEqual(x, [0, 31*24*60*60])
+        x = list(monthly_timestamps(0, (31+28)*24*60*60))
+        self.assertEqual(x, [0, 31*24*60*60, (31+28)*24*60*60])
+        x = list(monthly_timestamps(0, (31+28+30)*24*60*60))
+        self.assertEqual(x, [0, 31*24*60*60, (31+28)*24*60*60])
+        x = list(monthly_timestamps(0, (31+28+31)*24*60*60))
+        self.assertEqual(x, [0, 31*24*60*60, (31+28)*24*60*60, (31+28+31)*24*60*60])
+
+    def test_left_right(self):
+        test_dts = [pendulum.datetime(2000, 1, 15, 12, 1),
+                    pendulum.datetime(2000, 3, 21, 14, 45),
+                    pendulum.datetime(2000, 2, 29, 12, 1),
+                    pendulum.datetime(2001, 2, 28, 12, 1),
+                    pendulum.datetime(2014, 11, 21, 14, 45),
+                    pendulum.datetime(2000, 10, 1, 12, 1),
+                    pendulum.datetime(2000, 3, 1, 14, 45),
+                    pendulum.datetime(2000, 8, 30, 12, 1),
+                    pendulum.datetime(2000, 7, 31, 14, 45)]
+        for dt in test_dts:
+            self.assertEqual(ts_daily_left(dt.int_timestamp),
+                            dt.start_of("day").int_timestamp)
+            self.assertEqual(ts_daily_right(dt.int_timestamp),
+                            dt.end_of("day").int_timestamp)
+            self.assertEqual(ts_weekly_left(dt.int_timestamp),
+                            dt.start_of("week").int_timestamp)
+            self.assertEqual(ts_weekly_right(dt.int_timestamp),
+                            dt.end_of("week").int_timestamp)
+            self.assertEqual(ts_monthly_left(dt.int_timestamp),
+                            dt.start_of("month").int_timestamp)
+            self.assertEqual(ts_monthly_right(dt.int_timestamp),
+                            dt.end_of("month").int_timestamp)
 
     def test_proto(self):
         res = TimeSeries("ddd", "ph")
