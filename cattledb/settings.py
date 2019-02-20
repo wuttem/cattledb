@@ -48,7 +48,8 @@ AVAILABLE_METRICS = [
 
 EVENT_TYPES = [
     EventDefinition("test_daily", EventSeriesType.DAILY, Resolution.SECOND),
-    EventDefinition("test_monthly", EventSeriesType.MONTHLY, Resolution.MINUTE)
+    EventDefinition("test_monthly", EventSeriesType.MONTHLY, Resolution.MINUTE),
+    EventDefinition("test_monthly_*", EventSeriesType.MONTHLY, Resolution.MINUTE)
 ]
 
 

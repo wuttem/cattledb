@@ -645,7 +645,7 @@ class EventStore(object):
     STOREID = "events"
     MAX_GET_SIZE_DAILY = 45 * 24 * 60 * 60
     MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 *60
-    DEFAULT_SERIES_TYPE = EventSeriesType.MONTHLY
+    DEFAULT_SERIES_TYPE = EventSeriesType.DAILY
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -677,7 +677,11 @@ class EventStore(object):
         logger.warning("CREATE: Created Tables After: {}".format(tables_after))
 
     def get_type_for_name(self, name):
-        return EventSeriesType.DAILY
+        for ev_def in self.EVENTS:
+            if ((ev_def.name[-1] == "*" and name.startswith(ev_def.name[:-1]))
+                or ev_def.name == name):
+                return EventSeriesType(ev_def.type.value)
+        return self.DEFAULT_SERIES_TYPE
 
     @classmethod
     def reverse_day_key(cls, ts):
