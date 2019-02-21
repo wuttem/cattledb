@@ -277,3 +277,71 @@ class ModelTest(unittest.TestCase):
         if not six.PY2:
             with self.assertRaises(ValueError):
                 list(sliceable_deque(l2[30:10:-1]))
+
+    def test_local_aggregation(self):
+        ts1 = TimeSeries("ddd", "temp")
+        ts2 = TimeSeries("fff", "temp")
+
+        # daily, timeshift to winter
+        start = pendulum.datetime(2018, 10, 25, 0, 0, tz='Europe/Vienna')
+        cur = start
+        for i in range(10):
+            for j in range(24 * 6):
+                ts1.insert_point(cur, float(i+1))
+                cur = cur.add(minutes=10)
+        end = cur
+        self.assertEqual(start.add(days=10).subtract(hours=1), end)
+
+        l = [list(x) for x in ts1.daily_local()]
+        self.assertEqual(len(l), 10)
+        self.assertEqual(len(l[0]), 144)
+        self.assertEqual(l[0][0].dt, start)
+        for i in range(144):
+            self.assertEqual(l[0][i].value, 1.0)
+        self.assertEqual(l[1][0].dt, start.add(days=1))
+        for i in range(144):
+            self.assertEqual(l[1][i].value, 2.0)
+
+        l = list(ts1.aggregation("daily", "mean", raw=False, tz_mode="local"))
+        self.assertEqual(len(l), 10)
+        self.assertEqual(l[0].dt, start)
+        self.assertEqual(l[-1].dt, start.add(days=9))
+
+        l = list(ts1.aggregation("daily", "mean", raw=True, tz_mode="local"))
+        self.assertEqual(len(l), 10)
+        self.assertEqual(l[0].ts, start.int_timestamp)
+        self.assertEqual(l[0].ts_offset, 7200)
+        self.assertEqual(l[0].value, 1.0)
+        self.assertEqual(l[-1].ts, end.start_of("day").int_timestamp)
+        self.assertEqual(l[-1].ts_offset, 3600)
+        self.assertEqual(l[-1].value, 10.0)
+
+        # daily, timeshift to summer
+        start = pendulum.datetime(2018, 3, 20, 0, 0, tz='Europe/Vienna')
+        cur = start
+        for i in range(10):
+            for j in range(24 * 6):
+                ts2.insert_point(cur, float(i+1))
+                cur = cur.add(minutes=10)
+        end = cur
+        self.assertEqual(start.add(days=10).add(hours=1), end)
+
+        l = list(ts2.aggregation("daily", "all", raw=False, tz_mode="local"))
+        print(l)
+        self.assertEqual(len(l), 11)
+        self.assertEqual(l[0].dt, start)
+        self.assertEqual(l[-1].dt, start.add(days=10))
+
+        l = list(ts2.aggregation("daily", "all", raw=True, tz_mode="local"))
+        self.assertEqual(len(l), 11)
+        self.assertEqual(l[0].ts, start.int_timestamp)
+        self.assertEqual(l[0].ts_offset, 3600)
+        self.assertEqual(l[0].value.count, 144)
+        self.assertEqual(l[0].value.mean, 1.0)
+        self.assertEqual(l[0].value.stdev, 0.0)
+        self.assertEqual(l[5].value.count, 144 - 6)
+        self.assertEqual(l[-1].ts, end.start_of("day").int_timestamp)
+        self.assertEqual(l[-1].ts_offset, 7200)
+        self.assertEqual(l[-1].value.count, 6)
+        self.assertEqual(l[-1].value.mean, 10.0)
+        self.assertEqual(l[-1].value.stdev, 0.0)

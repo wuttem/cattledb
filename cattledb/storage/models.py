@@ -63,9 +63,26 @@ else:
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
 RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
+AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
 
 TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
+
+
+def my_mean(x):
+    if len(x) == 1:
+        return x[0]
+    return sum(x) / len(x)
+
+def my_full_aggregation(x):
+    if len(x) <= 1:
+        return AggregationValue(len(x), 0, 0, 0, 0, 0, 0)
+
+    from statistics import stdev, mean, median
+    return AggregationValue(
+        count=len(x), sum=sum(x), min=min(x),
+        max=max(x), mean=mean(x), stdev=stdev(x),
+        median=median(x))
 
 
 class SeriesType(Enum):
@@ -511,14 +528,53 @@ class TimeSeries(object):
             yield (self._at(x, raw=raw) for x in range(i, i + j))
             i += j
 
-    def aggregation(self, group="hourly", function="mean", raw=False):
+    def hourly_local(self, raw=False):
+        """Generator to access hourly data.
+        This will return an inner generator.
+        """
+        i = 0
+        while i < len(self._data):
+            j = 0
+            lower_bound = ts_hourly_left(self._data[i].ts + self._data[i].ts_offset)
+            upper_bound = ts_hourly_right(self._data[i].ts + self._data[i].ts_offset)
+            while (i + j < len(self._data) and
+                   (self._data[i + j].ts + self._data[i + j].ts_offset) <= upper_bound):
+                j += 1
+            yield (self._at(x, raw=raw) for x in range(i, i + j))
+            i += j
+
+    def daily_local(self, raw=False):
+        """Generator to access daily data.
+        This will return an inner generator.
+        """
+        i = 0
+        while i < len(self._data):
+            j = 0
+            lower_bound = ts_daily_left(self._data[i].ts + self._data[i].ts_offset)
+            upper_bound = ts_daily_right(self._data[i].ts + self._data[i].ts_offset)
+            while (i + j < len(self._data) and
+                   (self._data[i + j].ts + self._data[i + j].ts_offset) <= upper_bound):
+                j += 1
+            yield (self._at(x, raw=raw) for x in range(i, i + j))
+            i += j
+
+    def aggregation(self, group="hourly", function="mean", raw=False,
+                    tz_mode="utc"):
         """Aggregation Generator.
         """
+        assert tz_mode in ["utc", "local"]
+
         if group == "hourly":
-            it = self.hourly
+            if tz_mode == "local":
+                it = self.hourly_local
+            else:
+                it = self.hourly
             left = ts_hourly_left
         elif group == "daily":
-            it = self.daily
+            if tz_mode == "local":
+                it = self.daily_local
+            else:
+                it = self.daily
             left = ts_daily_left
         elif group == "10min":
             it = self.aligned_10minute
@@ -539,25 +595,29 @@ class TimeSeries(object):
                 return max(x) - min(x)
             func = amp
         elif function == "mean":
-            def mean(x):
-                if len(x) == 1:
-                    return x[0]
-                return sum(x) / len(x)
-            func = mean
+            func = my_mean
+        elif function == "all":
+            func = my_full_aggregation
         else:
             raise ValueError("Invalid aggregation group")
 
         if raw:
             for g in it(raw=True):
                 t = list(g)
-                ts = left(t[0].ts)
+                if tz_mode == "local":
+                    ts = left(t[0].ts + t[0].ts_offset) - t[0].ts_offset
+                else:
+                    ts = left(t[0].ts)
                 offset = t[0].ts_offset
                 value = func([x.value for x in t])
                 yield RawPoint(ts, value, offset)
         else:
             for g in it(raw=True):
                 t = list(g)
-                ts = left(t[0].ts)
+                if tz_mode == "local":
+                    ts = left(t[0].ts + t[0].ts_offset) - t[0].ts_offset
+                else:
+                    ts = left(t[0].ts)
                 offset = t[0].ts_offset
                 #offset = t[0].dt.offset
                 dt = pendulum.from_timestamp(ts, offset/3600.0)

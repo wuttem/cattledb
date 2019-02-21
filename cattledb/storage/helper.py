@@ -123,21 +123,36 @@ def ts_monthly_right(ts):
     days = [None, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     year = n.tm_year
     if year % 4 == 0:
-        days[2] = 29
+        if year % 100 == 0:
+            if year % 400 == 0:
+                days[2] = 29
+        else:
+            days[2] = 29
     ts = int(calendar.timegm(n)) + days[month] * 24 * 60 * 60 - 1
     return ts
 
 
+def daily_timestamps_pendulum(from_ts, to_ts):
+    assert from_ts <= to_ts
+    from_dt = pendulum.from_timestamp(from_ts)
+    to_dt = pendulum.from_timestamp(to_ts)
+    cur = from_dt.start_of('day')
+    while cur <= to_dt:
+        yield cur.int_timestamp
+        cur = cur.add(days=1)
+
+
+# This is much faster than the pendulum version
 def daily_timestamps(from_ts, to_ts):
     assert from_ts <= to_ts
     first = ts_daily_left(from_ts)
     last = first
     while last <= to_ts:
         yield last
-        last = ts_daily_left(last + 24*60*60 + 1000)  # Add 1000 for correct behaviour in case of time diffs
+        last = ts_daily_left(last + 25*60*60)  # Add 1 hour for correct behaviour at diffs
 
 
-def monthly_timestamps(from_ts, to_ts):
+def monthly_timestamps_pendulum(from_ts, to_ts):
     assert from_ts <= to_ts
     from_dt = pendulum.from_timestamp(from_ts)
     to_dt = pendulum.from_timestamp(to_ts)
@@ -145,6 +160,16 @@ def monthly_timestamps(from_ts, to_ts):
     while cur <= to_dt:
         yield cur.int_timestamp
         cur = cur.add(months=1)
+
+
+# This is much faster than the pendulum version
+def monthly_timestamps(from_ts, to_ts):
+    assert from_ts <= to_ts
+    first = ts_monthly_left(from_ts)
+    last = first
+    while last <= to_ts:
+        yield last
+        last = ts_monthly_left(last + 32*24*60*60)  # Add 1 day hour for correct behaviour at diffs
 
 
 def get_metric_name_lookup(metrics):

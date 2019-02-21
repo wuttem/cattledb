@@ -191,3 +191,48 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(temp[0].ts, start + 600 * 4999)
         ph = s[2]
         self.assertEqual(ph[0].ts, start)
+
+    def test_selective_delete(self):
+        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
+        db.create_tables(silent=True)
+        db.timeseries._create_metric("ph", silent=True)
+        db.timeseries._create_metric("act", silent=True)
+
+        base = datetime.datetime(2019, 2, 1, 23, 50, tzinfo=datetime.timezone.utc)
+        ph_data = [(base - datetime.timedelta(minutes=10*x),  ((x % 3) + 4)) for x in range(0, 144*5)]
+        act_data = [(base - datetime.timedelta(minutes=10*x),  ((x % 3) + 20)) for x in range(0, 144*5)]
+        ph = TimeSeries("dev1", "ph", values=ph_data)
+        act = TimeSeries("dev1", "act", values=act_data)
+
+        from_pd = pendulum.instance(ph_data[-1][0])
+        from_ts = from_pd.int_timestamp
+        to_pd = pendulum.instance(ph_data[0][0])
+        to_ts = to_pd.int_timestamp
+
+        #delete all data just in case
+        r = db.timeseries.delete_timeseries("dev1", ["act", "ph"], from_ts-24*60*60, to_ts+24*60*60)
+        db.timeseries.insert_timeseries(act)
+        db.timeseries.insert_timeseries(ph)
+
+        get_timeseries = db.timeseries.get_single_timeseries
+        self.assertEqual(len(get_timeseries("dev1", "ph", from_ts, to_ts)), 144*5)
+        self.assertEqual(len(get_timeseries("dev1", "act", from_ts, to_ts)), 144*5)
+        # perform delete
+        r = db.timeseries.delete_timeseries("dev1", ["ph"], from_ts, from_ts)
+        self.assertEqual(r, 1)
+
+        self.assertEqual(len(get_timeseries("dev1", "ph", from_ts, from_ts + 24*60*60 - 1)), 0)
+        self.assertEqual(len(get_timeseries("dev1", "ph", from_ts, to_ts)), 144*4)
+        self.assertEqual(len(get_timeseries("dev1", "act", from_ts, to_ts)), 144*5)
+
+        delete_start = from_ts + 24*60*60
+        delete_end = from_ts + 24*60*60*3
+
+        r = db.timeseries.delete_timeseries("dev1", ["act"], delete_start + 12*60*60, delete_end - 12*60*60)
+        self.assertEqual(r, 2)
+        self.assertEqual(len(get_timeseries("dev1", "ph", from_ts, from_ts + 24*60*60 - 1)), 0)
+        self.assertEqual(len(get_timeseries("dev1", "ph", from_ts, to_ts)), 144*4)
+        self.assertEqual(len(get_timeseries("dev1", "act", from_ts, to_ts)), 144*3)
+        self.assertEqual(len(get_timeseries("dev1", "act", from_ts, delete_start)), 144)
+        self.assertEqual(len(get_timeseries("dev1", "act", delete_start, delete_end - 1)), 0)
+        self.assertEqual(len(get_timeseries("dev1", "act", delete_end, to_ts)), 144*2)
