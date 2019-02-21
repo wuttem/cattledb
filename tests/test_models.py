@@ -279,6 +279,8 @@ class ModelTest(unittest.TestCase):
                 list(sliceable_deque(l2[30:10:-1]))
 
     def test_local_aggregation(self):
+        if six.PY2:
+            return
         ts1 = TimeSeries("ddd", "temp")
         ts2 = TimeSeries("fff", "temp")
 
