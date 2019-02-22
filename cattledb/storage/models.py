@@ -63,7 +63,11 @@ else:
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
 RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
-AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
+_AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
+
+class AggregationValue(_AggregationValue):
+    def to_dict(self):
+        return dict(self._asdict())
 
 TimestampWithOffset = namedtuple('TimestampWithOffset', ["ts", "offset"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
@@ -468,7 +472,6 @@ class TimeSeries(object):
         return timestamps, values, timestamp_offsets
 
     def to_proto(self):
-        print(self._data)
         timestamps, values, timestamp_offsets = self.to_lists()
 
         if self.series_type == SeriesType.FLOATSERIES:
