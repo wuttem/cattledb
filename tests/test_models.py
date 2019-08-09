@@ -11,8 +11,8 @@ import logging
 import binascii
 import datetime
 
-from cattledb.storage.models import TimeSeries, SerializableDict, SeriesType, sliceable_deque
-from cattledb.storage.helper import (to_ts, daily_timestamps, monthly_timestamps,
+from cattledb.storage.models import TimeSeries, SerializableDict, EventList
+from cattledb.core.helper import (to_ts, daily_timestamps, monthly_timestamps,
                                      ts_daily_left, ts_daily_right,
                                      ts_weekly_left, ts_weekly_right,
                                      ts_monthly_left, ts_monthly_right)
@@ -106,7 +106,7 @@ class ModelTest(unittest.TestCase):
             self.assertEqual(x[1], 5.0)
 
     def test_dictitem(self):
-        i1 = TimeSeries("test", "ph", series_type=SeriesType.DICTSERIES)
+        i1 = EventList("test", "ph")
         self.assertTrue(i1.empty())
         i1.insert_point(1, dict(hey=1.0, ho=2.0))
         self.assertFalse(i1.empty())
@@ -114,8 +114,6 @@ class ModelTest(unittest.TestCase):
         i2 = TimeSeries("test1", "ph", [(1, 1.0)])
         self.assertEqual(i2[0].value, 1.0)
         i2.insert_point(1, 2.0)
-        self.assertEqual(i2[0].value, 1.0)
-        i2.insert_point(1, 2.0, overwrite=True)
         self.assertEqual(i2[0].value, 2.0)
 
         i3 = TimeSeries("test2", "ph", [(1, 1.0)])
@@ -150,7 +148,7 @@ class ModelTest(unittest.TestCase):
             i.insert_point(t, v)
         i.insert(d2)
 
-        l = i.to_list()
+        l = list([x for x in i.all()])
         self.assertEqual(len(l), 100)
         logging.warning(l)
         for i in range(100):
@@ -247,36 +245,6 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(d3["föö"], "bär")
 
         self.assertTrue(isinstance(d4, dict))
-
-    def test_slicable_deque(self):
-        l1 = list(range(100))
-        l2 = sliceable_deque(l1)
-
-        l3 = list(sliceable_deque(l2[3:34]))
-        l4 = list(l1[3:34])
-        self.assertEqual(l3, l4)
-
-        l5 = list(sliceable_deque(l2[31:]))
-        l6 = list(l1[31:])
-        self.assertEqual(l5, l6)
-
-        l7 = list(sliceable_deque(l2[-10:]))
-        l8 = list(l1[-10:])
-        self.assertEqual(l7, l8)
-
-        l9 = list(sliceable_deque(l2[-10:-30]))
-        l10 = list(l1[-10:-30])
-        self.assertEqual(l9, l10)
-
-        l11 = list(sliceable_deque(l2[::-1]))
-        l12 = list(l1[::-1])
-        print(l11)
-        print(l12)
-        self.assertEqual(l11, l12)
-
-        if not six.PY2:
-            with self.assertRaises(ValueError):
-                list(sliceable_deque(l2[30:10:-1]))
 
     def test_local_aggregation(self):
         if six.PY2:

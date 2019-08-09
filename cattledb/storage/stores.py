@@ -13,7 +13,7 @@ from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
 
-from .helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names, monthly_timestamps
+from ..core.helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names, monthly_timestamps
 from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict,
                      ReaderActivityItem, DeviceActivityItem, RowUpsert, EventSeriesType)
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
