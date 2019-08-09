@@ -308,10 +308,12 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(l[0].ts_offset, 3600)
         self.assertEqual(l[0].value.count, 144)
         self.assertEqual(l[0].value.mean, 1.0)
-        self.assertEqual(l[0].value.stdev, 0.0)
+        if not six.PY2:
+            self.assertEqual(l[0].value.stdev, 0.0)
         self.assertEqual(l[5].value.count, 144 - 6)
         self.assertEqual(l[-1].ts, end.start_of("day").int_timestamp)
         self.assertEqual(l[-1].ts_offset, 7200)
         self.assertEqual(l[-1].value.count, 6)
         self.assertEqual(l[-1].value.mean, 10.0)
-        self.assertEqual(l[-1].value.stdev, 0.0)
+        if not six.PY2:
+            self.assertEqual(l[-1].value.stdev, 0.0)

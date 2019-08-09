@@ -21,7 +21,7 @@ from .helper import ts_hourly_left, ts_hourly_right
 from .helper import list_mean
 
 
-from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity
+from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity, EventSeries
 
 
 Point = namedtuple('Point', ['ts', 'value', 'dt'])
@@ -422,12 +422,11 @@ class FastFloatTimeseries(BaseTimeseries):
         return p.SerializeToString()
 
 
+TimeSeries = FastFloatTimeseries
+
+
 class FastDictTimeseries(BaseTimeseries):
     __container__ = PyTSList
-
-    @property
-    def name(self):
-        return self.metric
 
     def insert_point(self, dt, value):
         return self._data.insert_datetime(dt, dict(value))
@@ -466,6 +465,40 @@ class FastDictTimeseries(BaseTimeseries):
             dts.timestamps.append(ts)
             dts.timestamp_offsets.append(ts_offset)
         dts.metric = self.metric
+        dts.key = self.key
+        return dts
+
+    def to_proto_bytes(self):
+        p = self.to_proto()
+        return p.SerializeToString()
+
+
+class EventList(FastDictTimeseries):
+    @property
+    def name(self):
+        return self.metric
+
+    @classmethod
+    def from_proto_bytes(cls, b):
+        d = EventSeries()
+        d.ParseFromString(b)
+        return cls.from_proto(d)
+
+    @classmethod
+    def from_proto(cls, p):
+        i = cls(p.key, p.name)
+        parsed_values = [SerializableDict.from_proto(x) for x in p.values]
+        for ts, ts_offset, value in zip(p.timestamps, p.timestamp_offsets, parsed_values):
+            i._data.insert(ts=ts, ts_offset=ts_offset, value=dict(value))
+        return i
+
+    def to_proto(self):
+        dts = EventSeries()
+        for ts, ts_offset, value in self._data:
+            dts.values.append(SerializableDict(value).to_proto())
+            dts.timestamps.append(ts)
+            dts.timestamp_offsets.append(ts_offset)
+        dts.name = self.name
         dts.key = self.key
         return dts
 

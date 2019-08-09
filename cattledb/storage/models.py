@@ -4,11 +4,10 @@
 from enum import Enum
 
 from ..core.models import FastFloatTimeseries
-FloatTimeSeries = FastFloatTimeseries
-TimeSeries = FastFloatTimeseries
+from ..core.models import TimeSeries
 
 from ..core.models import FastDictTimeseries
-EventList = FastDictTimeseries
+from ..core.models import EventList
 
 from ..core.models import SerializableDict
 from ..core.models import SerializableNamespaceDict
