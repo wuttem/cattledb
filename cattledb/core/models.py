@@ -38,7 +38,12 @@ class AggregationValue(_AggregationValue):
 def full_aggregation(x):
     if len(x) <= 1:
         return AggregationValue(len(x), 0, 0, 0, 0, 0, 0)
-
+    
+    if six.PY2:
+        return AggregationValue(
+                count=len(x), sum=sum(x), min=min(x),
+                max=max(x), mean=sum(x)/len(x), stdev=None,
+                median=None)
     from statistics import stdev, mean, median
     return AggregationValue(
         count=len(x), sum=sum(x), min=min(x),
@@ -104,7 +109,7 @@ class BaseTimeseries(object):
     def last(self):
         return None if self.empty() else self._rawpoint_at(len(self)-1)
 
-    def _at(self, index, raw):
+    def _at(self, index, raw=False):
         if raw:
             return self._rawpoint_at(index)
         return self._point_at(index)
@@ -134,7 +139,7 @@ class BaseTimeseries(object):
         return (item[0], item[1])
 
     def __getitem__(self, key):
-        return self._rawpoint_at(key)
+        return self._point_at(key)
 
     def insert(self, series):
         counter = 0
@@ -491,7 +496,7 @@ class SerializableDict(dict):
         d = Dictionary()
         pairs = []
         for k, v in self.items():
-            pairs.append(Pair(key=str(k), value=json.dumps(v)))
+            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
@@ -539,7 +544,7 @@ class SerializableNamespaceDict(object):
         d = MetaDataDict(namespace=self.namespace)
         pairs = []
         for k, v in self.data.items():
-            pairs.append(Pair(key=str(k), value=json.dumps(v)))
+            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
