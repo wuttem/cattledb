@@ -460,10 +460,12 @@ class FastDictTimeseries(BaseTimeseries):
 
     def to_proto(self):
         dts = DictTimeSeries()
+        p_values = []
         for ts, ts_offset, value in self._data:
-            dts.values.append(SerializableDict(value).to_proto())
+            p_values.append(SerializableDict(value).to_proto())
             dts.timestamps.append(ts)
             dts.timestamp_offsets.append(ts_offset)
+        dts.values.extend(p_values)
         dts.metric = self.metric
         dts.key = self.key
         return dts
@@ -494,10 +496,12 @@ class EventList(FastDictTimeseries):
 
     def to_proto(self):
         dts = EventSeries()
+        p_values = []
         for ts, ts_offset, value in self._data:
-            dts.values.append(SerializableDict(value).to_proto())
+            p_values.append(SerializableDict(value).to_proto())
             dts.timestamps.append(ts)
             dts.timestamp_offsets.append(ts_offset)
+        dts.values.extend(p_values)
         dts.name = self.name
         dts.key = self.key
         return dts
