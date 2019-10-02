@@ -2,7 +2,7 @@ import os
 import datetime
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import TimeSeries
-from cattledb.storage.helper import to_ts
+from cattledb.core.helper import to_ts
 
 # set env
 os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8080"
