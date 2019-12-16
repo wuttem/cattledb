@@ -13,12 +13,12 @@ import msgpack
 import json
 
 from collections import namedtuple
-from cdb_ext import FastTSList, PyTSList
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_monthly_left, ts_monthly_right
 from .helper import ts_hourly_left, ts_hourly_right
 from .helper import list_mean
+from ._timeseries import FloatTSList, PyTSList
 
 
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity, EventSeries
@@ -38,7 +38,7 @@ class AggregationValue(_AggregationValue):
 def full_aggregation(x):
     if len(x) <= 1:
         return AggregationValue(len(x), 0, 0, 0, 0, 0, 0)
-    
+
     if six.PY2:
         return AggregationValue(
                 count=len(x), sum=sum(x), min=min(x),
@@ -376,7 +376,7 @@ class BaseTimeseries(object):
 
 
 class FastFloatTimeseries(BaseTimeseries):
-    __container__ = FastTSList
+    __container__ = FloatTSList
 
     def insert_point(self, dt, value):
         return self._data.insert_datetime(dt, float(value))

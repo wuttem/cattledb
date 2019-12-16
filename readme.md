@@ -10,7 +10,7 @@ Fast BigTable Time Series Database Implementation
 ```bash
 docker run -it -p 8080:8080 spotify/bigtable-emulator:latest
 export BIGTABLE_EMULATOR_HOST=localhost:8080
-pytest
+pytest tests
 ```
 
 
@@ -20,7 +20,7 @@ docker build . -t cattledb-test
 docker run -it cattledb-test bash
 service bigtable-server start
 export BIGTABLE_EMULATOR_HOST="localhost:8080"
-pytest
+pytest tests
 ```
 
 

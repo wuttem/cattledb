@@ -106,7 +106,7 @@ class CMakeBuild(build_ext):
 class PyTest(TestCommand):
     def finalize_options(self):
         TestCommand.finalize_options(self)
-        self.test_args = []
+        self.test_args = ["tests"]
         self.test_suite = True
 
     def run_tests(self):
@@ -119,6 +119,7 @@ def run_setup(with_extension):
     cmdclass = dict(test=PyTest)
 
     if with_extension:
+        all_reqs = [x for x in reqs] + ["cmake"]
         kw = dict(
             ext_modules = [
                 CMakeExtension("cdb_ext_ts"),
@@ -126,7 +127,10 @@ def run_setup(with_extension):
             cmdclass=dict(cmdclass, build_ext=CMakeBuild),
         )
     else:
+        all_reqs = [x for x in reqs]
         kw = dict(cmdclass=cmdclass)
+
+    print("CattleDB Requirements: {}".format(all_reqs))
 
     setup(
         name='cattledb',
@@ -142,7 +146,7 @@ def run_setup(with_extension):
         package_dir={'cattledb':
                     'cattledb'},
         include_package_data=True,
-        install_requires=reqs,
+        install_requires=all_reqs,
         dependency_links=[],
         zip_safe=False,
         keywords='cattledb',

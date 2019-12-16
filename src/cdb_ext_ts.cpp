@@ -86,12 +86,15 @@ class timeseries {
         }
 
         void trim_idx(const size_t &start_idx, const size_t &end_idx) {
-            auto erase_left = start_idx;
-            auto erase_right = _data.size() - end_idx;
-            if (erase_left >= 1 && erase_left < _data.size())
-                _data.erase(_data.begin(), _data.begin() + erase_left);
-            if (erase_right >= 1 && erase_right <= _data.size())
-                _data.erase(_data.begin() + _data.size() - (erase_right - 1), _data.end());
+            if (start_idx >= _data.size())
+            {
+                _data.clear();
+                return;
+            }
+            if (start_idx >= 1 && start_idx < _data.size())
+                _data.erase(_data.begin(), _data.begin() + start_idx);
+            if (end_idx < (_data.size() - 1))
+                _data.erase(_data.begin() + end_idx + 1, _data.end());
         }
 
         void trim_ts(const int64_t &start_ts, const int64_t &end_ts) {
