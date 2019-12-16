@@ -3,7 +3,6 @@
 
 import logging
 import time
-import six
 import struct
 import json
 
@@ -117,7 +116,7 @@ class MetaDataStore(object):
         for row_key, data_dict in gen:
             o_name, o_id = row_key.split("#")
             d = dict()
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -256,7 +255,7 @@ class ActivityStore(object):
         for row_key, data_dict in rowgen:
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
             # Append to Activity
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -302,7 +301,7 @@ class ActivityStore(object):
             row_keys.append(row_key)
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
 
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -523,7 +522,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -570,7 +569,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -738,7 +737,7 @@ class EventStore(object):
             it = event_list.monthly_storage_buckets()
         else:
             raise ValueError("invalid EventSeriesType")
-        
+
         for ts, bucket in it:
             row_key = self.get_row_key(key, name, ts)
             row_keys.append(row_key)
@@ -794,7 +793,7 @@ class EventStore(object):
 
         events = EventList(key, name)
         for row_key, data_dict in gen:
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -832,7 +831,7 @@ class EventStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for key, value in six.iteritems(data_dict):
+            for key, value in data_dict.items():
                 s = key.split(":")
                 if len(s) != 2:
                     continue

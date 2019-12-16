@@ -5,7 +5,6 @@ import logging
 import time
 import os
 import random
-import six
 import struct
 
 from collections import OrderedDict
@@ -145,8 +144,8 @@ class Table(object):
     @classmethod
     def partial_row_to_ordered_dict(cls, row_data):
         result = OrderedDict()
-        for column_family_id, columns in six.iteritems(row_data._cells):
-            for column_qual, cells in six.iteritems(columns):
+        for column_family_id, columns in row_data._cells.items():
+            for column_qual, cells in columns.items():
                 key = _to_bytes(column_family_id) + b":" + _to_bytes(column_qual)
                 result[key.decode("utf-8")] = cells[0].value
         return result
@@ -154,7 +153,7 @@ class Table(object):
     @classmethod
     def partial_row_to_dict(cls, row_data):
         result = {}
-        for cf, data in six.iteritems(row_data.to_dict()):
+        for cf, data in row_data.to_dict().items():
             result[cf.decode("utf-8")] = data[0].value
         return result
 
@@ -185,7 +184,7 @@ class Table(object):
         rows = []
         for r in row_upserts:
             row = self._low_level.row(r.row_key)
-            for c, value in six.iteritems(r.cells):
+            for c, value in r.cells.items():
                 column_family, col = c.split(":", 1)
                 row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
             rows.append(row)
@@ -298,20 +297,18 @@ class Table(object):
                                  column_qualifier.encode("utf-8"), value)
         modified_cells = row.commit()
 
-        if six.PY2:
-            column_cells = modified_cells[column_family_id][column_qualifier]
+        inner_keys = list(modified_cells[column_family_id].keys())
+        if not inner_keys:
+            raise KeyError(column_qualifier)
+
+        if isinstance(inner_keys[0], bytes):
+            column_cells = modified_cells[
+                column_family_id][column_qualifier.encode("latin-1")]
+        elif isinstance(inner_keys[0], str):
+            column_cells = modified_cells[
+                column_family_id][column_qualifier]
         else:
-            inner_keys = list(six.iterkeys(modified_cells[column_family_id]))
-            if not inner_keys:
-                raise KeyError(column_qualifier)
-            if isinstance(inner_keys[0], six.binary_type):
-                column_cells = modified_cells[
-                    column_family_id][six.b(column_qualifier)]
-            elif isinstance(inner_keys[0], six.string_types):
-                column_cells = modified_cells[
-                    column_family_id][six.u(column_qualifier)]
-            else:
-                raise KeyError(column_qualifier)
+            raise KeyError(column_qualifier)
 
         # Make sure there is exactly one cell in the column.
         if len(column_cells) != 1:

@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # coding: utf8
 
-from __future__ import unicode_literals
-
-
-import six
 import abc
 import hashlib
 import pendulum
@@ -13,6 +9,7 @@ import msgpack
 import json
 
 from collections import namedtuple
+from statistics import stdev, mean, median
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_monthly_left, ts_monthly_right
@@ -39,20 +36,13 @@ def full_aggregation(x):
     if len(x) <= 1:
         return AggregationValue(len(x), 0, 0, 0, 0, 0, 0)
 
-    if six.PY2:
-        return AggregationValue(
-                count=len(x), sum=sum(x), min=min(x),
-                max=max(x), mean=sum(x)/len(x), stdev=None,
-                median=None)
-    from statistics import stdev, mean, median
     return AggregationValue(
         count=len(x), sum=sum(x), min=min(x),
         max=max(x), mean=mean(x), stdev=stdev(x),
         median=median(x))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseTimeseries(object):
+class BaseTimeseries(object, metaclass=abc.ABCMeta):
     __container__ = None
 
     def __init__(self, key, metric, values=None):
@@ -533,7 +523,7 @@ class SerializableDict(dict):
         d = Dictionary()
         pairs = []
         for k, v in self.items():
-            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
@@ -581,7 +571,7 @@ class SerializableNamespaceDict(object):
         d = MetaDataDict(namespace=self.namespace)
         pairs = []
         for k, v in self.data.items():
-            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
