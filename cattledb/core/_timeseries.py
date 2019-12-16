@@ -3,7 +3,6 @@
 
 import pendulum
 import datetime
-import six
 import bisect
 
 
@@ -138,10 +137,7 @@ class py_timeseries(object):
         if idx2 > 0:
             self.trim_idx(idx1, idx2-1)
         else:
-            if six.PY2:
-                del self._data[:]
-            else:
-                self._data.clear()
+            self._data.clear()
 
     def get_min_ts(self):
         return self._data[0][0]

@@ -5,6 +5,13 @@
 Fast BigTable Time Series Database Implementation
 
 
+## Installation
+Recursive Otion is needed to build the C Speedups.
+```
+git clone --recursive https://github.com:wuttem/cattledb.git
+pip install ./cattledb
+```
+
 ## Run Docker Emulator for Tests on Machine
 
 ```bash

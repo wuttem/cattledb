@@ -9,8 +9,6 @@ import os
 import datetime
 import mock
 import time
-import six
-
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import TimeSeries
@@ -194,8 +192,6 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(ph[0].ts, start)
 
     def test_selective_delete(self):
-        if six.PY2:
-            return
         db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
         db.create_tables(silent=True)
         db.timeseries._create_metric("ph", silent=True)
