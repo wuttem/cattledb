@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # coding: utf8
-from __future__ import unicode_literals
 
 import unittest
 import random
@@ -35,8 +34,6 @@ class ConnectionTest(unittest.TestCase):
         db = Connection(project_id='test-system', instance_id='test')
         db.create_tables(silent=True)
 
-        self.assertEqual(db.table_with_prefix("metadata"), "mycdb_metadata")
-
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
 
         res = db.read_row("metadata", "abc123")
@@ -54,7 +51,7 @@ class ConnectionTest(unittest.TestCase):
 
         db = Connection(project_id='test-system', instance_id='test')
         db.create_tables(silent=True)
-        table = db.metadata_table()
+        table = db.metadata.table()
         table.upsert_rows(inserts)
 
         res = table.read_rows(row_keys=["abc#2#1", "abc#3#1"], column_families=["p"])

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 from builtins import str
 
 from setuptools.command.test import test as TestCommand
