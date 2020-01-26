@@ -19,6 +19,7 @@ class Connection(object):
         self.read_only = read_only
         self.table_prefix = table_prefix
         self.credentials = credentials
+        self.engine_type = "bigtable"
 
         self.engines = []
         self.admin_engine = None
@@ -86,7 +87,7 @@ class Connection(object):
 
     def get_engine(self):
         if len(self.engines) < 1:
-            eng = engine_factory("bigtable", read_only=self.read_only, table_prefix=self.table_prefix,
+            eng = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
                                  admin=False, engine_options={"project_id": self.project_id,
                                                               "instance_id": self.instance_id,
                                                               "credentials": self.credentials})
@@ -97,7 +98,7 @@ class Connection(object):
 
     def get_admin_engine(self):
         if self.admin_engine is None:
-            self.admin_engine = engine_factory("bigtable", read_only=self.read_only, table_prefix=self.table_prefix,
+            self.admin_engine = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
                                                admin=True, engine_options={"project_id": self.project_id,
                                                                            "instance_id": self.instance_id,
                                                                            "credentials": self.credentials})
