@@ -28,15 +28,15 @@ class StorageEngine(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def setup_table(self, table_name):
+    def setup_table(self, table_name, silent=False):
         pass
 
     @abstractmethod
-    def setup_column_family(self, table_name, column_family):
+    def setup_column_family(self, table_name, column_family, silent=False):
         pass
 
     @abstractmethod
-    def get_table(self, full_table_name):
+    def get_table(self, table_name):
         pass
 
     def get_full_table_name(self, table_name):

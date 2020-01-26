@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class BigtableEngine(StorageEngine):
-    def setup_table(self, table_name, column_families=[], silent=False):
+    def setup_table(self, table_name, silent=False):
         if not self.admin or self.read_only:
             raise RuntimeError("admin operations not allowed")
 
@@ -39,9 +39,6 @@ class BigtableEngine(StorageEngine):
 
         low_table = ad.table(full_table_name)
         low_table.create()
-
-        for family_name in column_families:
-            self.setup_column_family(table_name, family_name, silent=silent)
 
         logger.warning("CREATE: Created Table: {}".format(full_table_name))
 

@@ -20,6 +20,7 @@ class Connection(object):
         self.table_prefix = table_prefix
         self.credentials = credentials
         self.engine_type = "bigtable"
+        self.data_dir = "."
 
         self.engines = []
         self.admin_engine = None
@@ -90,7 +91,8 @@ class Connection(object):
             eng = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
                                  admin=False, engine_options={"project_id": self.project_id,
                                                               "instance_id": self.instance_id,
-                                                              "credentials": self.credentials})
+                                                              "credentials": self.credentials,
+                                                              "data_dir": self.data_dir})
             logger.info("New Database Engine Connection created")
             self.engines.append(eng)
             return eng
@@ -101,7 +103,8 @@ class Connection(object):
             self.admin_engine = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
                                                admin=True, engine_options={"project_id": self.project_id,
                                                                            "instance_id": self.instance_id,
-                                                                           "credentials": self.credentials})
+                                                                           "credentials": self.credentials,
+                                                                           "data_dir": self.data_dir})
             logger.warning("New Admin Database Engine Connection created")
         return self.admin_engine
 
