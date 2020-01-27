@@ -247,15 +247,15 @@ class BigtableTable(StorageTable):
             curr_row_dict = self.partial_row_to_dict(rowdata)
             return (rk, curr_row_dict)
 
-    def read_rows(self, row_keys=None, start_key=None, end_key=None,
-                  column_families=None):
-        generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
-                                       column_families=column_families)
+    # def read_rows(self, row_keys=None, start_key=None, end_key=None,
+    #               column_families=None):
+    #     generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
+    #                                    column_families=column_families)
 
-        result = []
-        for rk, data in generator:
-            result.append((rk, data))
-        return result
+    #     result = []
+    #     for rk, data in generator:
+    #         result.append((rk, data))
+    #     return result
 
     # Taken from google-bigtable-happybase
     def increment_counter(self, row_id, column, value):

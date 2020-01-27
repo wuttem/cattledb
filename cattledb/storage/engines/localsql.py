@@ -6,7 +6,9 @@ import logging
 import os
 import json
 import base64
+import struct
 
+from collections import defaultdict, OrderedDict
 from sqlite3 import OperationalError
 
 from .base import StorageEngine, StorageTable
@@ -27,7 +29,6 @@ class SQLiteEngine(StorageEngine):
         if "in_memory" in engine_options:
             self.in_memory = True
 
-
     def connect(self):
         if self.db_connection is None:
             f = ":memory:" if self.in_memory else os.path.join(self.data_dir, "cattle.db")
@@ -37,6 +38,7 @@ class SQLiteEngine(StorageEngine):
     def disconnect(self):
         if self.db_connection is not None:
             self.db_connection.close()
+            self.db_connection = None
 
     def setup_table(self, table_name, silent=False):
         if not self.admin or self.read_only:
@@ -58,6 +60,7 @@ class SQLiteEngine(StorageEngine):
                 logger.warning(e)
             else:
                 raise
+        self.disconnect()
         logger.warning("CREATE: Created Table: {}".format(full_table_name))
 
     def setup_column_family(self, table_name, column_family, silent=True):
@@ -77,11 +80,13 @@ class SQLiteEngine(StorageEngine):
                 logger.warning(e)
             else:
                 raise
+        self.disconnect()
         logger.warning("CREATE CF: Created Family: {}".format(column_family))
 
     def get_table(self, table_name):
+        con = self.connect()
         full_table_name = self.get_full_table_name(table_name)
-        return SQLiteTable(self.db_connection, full_table_name)
+        return SQLiteTable(con, full_table_name)
 
 
 class SQLiteTable(StorageTable):
@@ -94,6 +99,21 @@ class SQLiteTable(StorageTable):
         fam, col = column_name.split(":", 1)
         return fam, col
 
+    def decode_row_data(self, row_data, column_names):
+        d = OrderedDict()
+        for col_name, raw_val in zip(column_names, row_data):
+            if col_name == "k" or col_name == "row_meta":
+                continue
+            if raw_val is None:
+                continue
+            decoded = json.loads(raw_val)
+            assert decoded
+            for k, v in decoded.items():
+                val = base64.b64decode(v)
+                col = self.build_column(col_name, k)
+                d[col] = val
+        return d
+
     @classmethod
     def build_column(cls, fam, col):
         return "{}:{}".format(fam, col)
@@ -103,7 +123,7 @@ class SQLiteTable(StorageTable):
         cur = self.con.cursor()
         cur.execute(_SQL, (row_id,))
         res = cur.fetchone()
-        if res:
+        if res and res[0]:
             return json.loads(res[0])
         return None
 
@@ -117,10 +137,17 @@ class SQLiteTable(StorageTable):
             fam, col = self.split_column(k)
             assert fam == column_family
             d[col] = base64.b64encode(v).decode('ascii')
-        _SQL = 'INSERT INTO {} (k, {}) VALUES(?, ?)'.format(self.table, fam)
+        # Below is the SQLite >3.24 version
+        # _SQL = 'INSERT INTO {} (k, {}) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET {} = ? WHERE k = ?'.format(self.table, fam, fam)
+        _SQL_UPDATE = 'UPDATE {} SET {} = ? WHERE k = ?;'.format(self.table, fam)
+        _SQL_INSERT = 'INSERT INTO {} (k, {}) SELECT ?, ? WHERE (Select Changes() = 0);'.format(self.table, fam)
         cur = self.con.cursor()
         raw_value = json.dumps(d)
-        cur.execute(_SQL, (row_id, raw_value,))
+        # try update
+        cur.execute(_SQL_UPDATE, (raw_value, row_id,))
+        # try insert
+        cur.execute(_SQL_INSERT, (row_id, raw_value,))
+        self.con.commit()
         return cur.lastrowid
 
     def write_cell(self, row_id, column, value):
@@ -138,38 +165,122 @@ class SQLiteTable(StorageTable):
         cols = [t[0] for t in cur.description]
         res = cur.fetchone()
         if res:
-            out = {}
-            for col_name, raw_val in zip(cols, res):
-                if col_name == "k" or col_name == "row_meta":
-                    continue
-                if raw_val is None:
-                    continue
-                decoded = json.loads(raw_val)
-                assert decoded
-                for k, v in decoded.items():
-                    val = base64.b64decode(v)
-                    col = self.build_column(col_name, k)
-                    out[col] = val
-            return out
+            return self.decode_row_data(res, cols)
         raise KeyError("row {} not found".format(row_id))
 
     def delete_row(self, row_id, column_families=None):
-        raise NotImplementedError
+        cur = self.con.cursor()
+        if column_families is None:
+            _SQL = "DELETE FROM {} WHERE k = ?;".format(self.table)
+            cur.execute(_SQL, (row_id,))
+            print(_SQL)
+        else:
+            ups = ", ".join(["{} = null".format(c) for c in column_families])
+            _SQL = "UPDATE {} SET {} WHERE k = ?;".format(self.table, ups)
+            print(_SQL)
+            cur.execute(_SQL, (row_id,))
+        self.con.commit()
 
     def upsert_row(self, row_id, values):
+        inserts = defaultdict(dict)
+        # sort by family
         for k, v in values.items():
             fam, col = self.split_column(k)
-        raise NotImplementedError
+            inserts[fam][k] = v
+        for fam, vals in inserts.items():
+            self._write_cells(row_id, fam, vals)
+        return True
 
     def upsert_rows(self, row_upserts):
-        raise NotImplementedError
+        res = []
+        for r in row_upserts:
+            res.append(self.upsert_row(r.row_key, r.cells))
+        return res
 
     def row_generator(self, row_keys=None, start_key=None, end_key=None,
                       column_families=None, check_prefix=None):
-        raise NotImplementedError
+        if row_keys is None and start_key is None:
+            raise ValueError("use row_keys or start_key parameter")
+        if start_key is not None and (end_key is None and check_prefix is None):
+            raise ValueError("use start_key together with end_key or check_prefix")
+
+        if column_families is None:
+            sel = "*"
+        else:
+            sel = ", ".join(["k"] + column_families)
+
+        params = []
+        if row_keys is not None:
+            filter_terms = []
+            for r in row_keys:
+                filter_terms.append("k = ?")
+                params.append(r)
+            filter = " OR ".join(filter_terms)
+        elif start_key is not None:
+            filter = "k >= ?"
+            params.append(start_key)
+            if end_key is not None:
+                filter = filter + " AND k <= ?"
+                params.append(end_key)
+        else:
+            raise ValueError("use row_keys or start_key parameter")
+
+        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
+        cur = self.con.cursor()
+        cur.execute(_SQL, tuple(params))
+        cols = [t[0] for t in cur.description]
+        # first should be key
+        assert cols[0] == "k"
+
+        for row in cur:
+            curr_row_dict = self.decode_row_data(row, cols)
+            rk = row[0]
+            if len(curr_row_dict) == 0:
+                continue
+            if check_prefix:
+                if not rk.startswith(check_prefix):
+                    break
+            yield (rk, curr_row_dict)
 
     def get_first_row(self, row_key_prefix, column_families=None):
-        raise NotImplementedError
+        if column_families is None:
+            sel = "*"
+        else:
+            sel = ", ".join(["k"] + column_families)
+
+        filter = "k >= ?"
+        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
+        cur = self.con.cursor()
+        cur.execute(_SQL, (row_key_prefix,))
+        cols = [t[0] for t in cur.description]
+        # first should be key
+        assert cols[0] == "k"
+
+        for row in cur:
+            curr_row_dict = self.decode_row_data(row, cols)
+            rk = row[0]
+            if len(curr_row_dict) == 0:
+                continue
+            if not rk.startswith(row_key_prefix):
+                break
+            return (rk, curr_row_dict)
 
     def increment_counter(self, row_id, column, value):
-        raise NotImplementedError
+        fam, col = self.split_column(column)
+        try:
+            d = self.read_row(row_id, column_families=[fam])
+            b = d.get(column, None)
+            if b is None:
+                old_value = 0
+            else:
+                old_value = struct.Struct('>q').unpack(b)[0]
+        except KeyError:
+            old_value = 0
+
+        if old_value:
+            new_value = old_value + value
+        else:
+            new_value = 0 + value
+        d = struct.Struct('>q').pack(new_value)
+        self.write_cell(row_id, column, d)
+        return new_value

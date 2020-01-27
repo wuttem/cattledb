@@ -5,6 +5,14 @@ from .bigtable import BigtableEngine
 from .localsql import SQLiteEngine
 
 
+def get_engine_capabilities(engine_name):
+    if engine_name == "bigtable":
+        return {"threading": True}
+    if engine_name == "localsql":
+        return {"threading": False}
+    raise ValueError("invalid storage engine")
+
+
 def engine_factory(engine_name, read_only, table_prefix, admin=False, engine_options=None):
     if engine_options is None:
         engine_options = {}

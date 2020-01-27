@@ -6,7 +6,7 @@ import time
 import os
 import random
 
-from .engines import engine_factory
+from .engines import engine_factory, get_engine_capabilities
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +22,16 @@ class Connection(object):
         self.engine_type = "bigtable"
         self.data_dir = "."
 
+        self.engine_capabilities = get_engine_capabilities(self.engine_type)
+
         self.engines = []
         self.admin_engine = None
-        self.pool_size = pool_size
+
+        if self.engine_capabilities.get("threading"):
+            self.pool_size = pool_size
+        else:
+            self.pool_size = 1
+
         self.stores = {}
 
         self.metrics = []
