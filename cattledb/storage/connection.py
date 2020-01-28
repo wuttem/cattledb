@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 class Connection(object):
     def __init__(self, project_id, instance_id, read_only=False, pool_size=8, table_prefix="mycdb",
-                 credentials=None, metric_definition=None, event_definitions=None):
+                 credentials=None, metric_definition=None, event_definitions=None, engine="bigtable"):
         self.project_id = project_id
         self.instance_id = instance_id
         self.read_only = read_only
         self.table_prefix = table_prefix
         self.credentials = credentials
-        self.engine_type = "bigtable"
+        self.engine_type = engine
         self.data_dir = "."
 
         self.engine_capabilities = get_engine_capabilities(self.engine_type)
@@ -72,7 +72,7 @@ class Connection(object):
             for table_name, columns in table_def.items():
                 eng.setup_table(table_name, silent=silent)
                 for col in columns:
-                    eng.setup_column_family(table_name,column_family=col, silent=silent)
+                    eng.setup_column_family(table_name, column_family=col, silent=silent)
 
     def create_all_metrics(self, silent=False):
         eng = self.get_admin_engine()
