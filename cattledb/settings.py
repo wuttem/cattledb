@@ -6,24 +6,7 @@ import os
 from enum import Enum
 from collections import namedtuple
 
-MetricDefinition = namedtuple('MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
-EventDefinition = namedtuple('EventDefinition', ['name', "type", "resolution"])
-
-
-class MetricType(Enum):
-    FLOATSERIES = 1
-    DICTSERIES = 2
-
-
-class EventSeriesType(Enum):
-    DAILY = 1
-    MONTHLY = 2
-
-
-class Resolution(Enum):
-    SECOND = 1
-    MINUTE = 2
-    HOUR = 3
+from .core.models import MetricDefinition, EventDefinition, MetricType, EventSeriesType, Resolution
 
 
 AVAILABLE_METRICS = [

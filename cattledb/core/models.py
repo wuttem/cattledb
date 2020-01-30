@@ -8,6 +8,7 @@ import struct
 import msgpack
 import json
 
+from enum import Enum
 from collections import namedtuple
 from statistics import stdev, mean, median
 
@@ -26,6 +27,76 @@ RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 _AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
+_MetricDefinition = namedtuple('_MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
+_EventDefinition = namedtuple('_EventDefinition', ['name', "type", "resolution"])
+
+
+class MetricType(Enum):
+    FLOATSERIES = 1
+    DICTSERIES = 2
+
+
+class EventSeriesType(Enum):
+    DAILY = 1
+    MONTHLY = 2
+
+
+class Resolution(Enum):
+    SECOND = 1
+    MINUTE = 2
+    HOUR = 3
+
+
+class MetricDefinition(object):
+    def __init__(self, name, id, type, delete_possible, update_possible, resolution):
+        self.name = name
+        self.id = id
+        self.type = type
+        self.delete_possible = delete_possible
+        self.update_possible = update_possible
+        self.resolution = resolution
+
+    @classmethod
+    def from_dict(cls, d):
+        name = d["name"]
+        id = d["id"]
+        t = MetricType(d["type"])
+        delete_possible = d["delete_possible"]
+        update_possible = d["update_possible"]
+        resolution = Resolution(d["resolution"])
+        return cls(name, id, t, delete_possible, update_possible, resolution)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'id': self.id,
+            'type': self.type.value,
+            'delete_possible': self.delete_possible,
+            "update_possible": self.update_possible,
+            "resolution": self.resolution.value
+        }
+
+
+class EventDefinition(object):
+    def __init__(self, name, type, resolution):
+        self.name = name
+        self.type = type
+        self.resolution = resolution
+
+    @classmethod
+    def from_dict(cls, d):
+        name = d["name"]
+        t = EventSeriesType(d["type"])
+        resolution = Resolution(d["resolution"])
+        return cls(**d)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'type': self.type.value,
+            "resolution": self.resolution.value
+        }
+
 
 class AggregationValue(_AggregationValue):
     def to_dict(self):

@@ -10,10 +10,17 @@ import datetime
 
 from cattledb.storage.models import TimeSeries, SerializableDict, EventList
 from cattledb.core.helper import (to_ts, daily_timestamps, monthly_timestamps,
-                                     ts_daily_left, ts_daily_right,
-                                     ts_weekly_left, ts_weekly_right,
-                                     ts_monthly_left, ts_monthly_right)
+                                  ts_daily_left, ts_daily_right,
+                                  ts_weekly_left, ts_weekly_right,
+                                  ts_monthly_left, ts_monthly_right,
+                                  merge_lists_on_key)
 from cattledb.grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary
+
+
+class ObjWithName(object):
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
 
 
 class ModelTest(unittest.TestCase):
@@ -310,3 +317,19 @@ class ModelTest(unittest.TestCase):
         self.assertEqual(l[-1].value.count, 6)
         self.assertEqual(l[-1].value.mean, 10.0)
         self.assertEqual(l[-1].value.stdev, 0.0)
+
+    def test_merge_lists(self):
+        m1 = ObjWithName("ph", "ph1")
+        m2 = ObjWithName("temp", "temp1")
+        m3 = ObjWithName("act", "act1")
+        m4 = ObjWithName("act", "act2")
+        m5 = ObjWithName("hum", "hum1")
+        a = [m1, m2, m3]
+        b = [m4, m5]
+        m = merge_lists_on_key(a, b, key=lambda x: x.name)
+        self.assertEqual(len(m), 4)
+        self.assertEqual([x.value for x in m], ["ph1", "temp1", "act2", "hum1"])
+
+        m2 = merge_lists_on_key(a, b, key=lambda x: x.value)
+        self.assertEqual(len(m2), 5)
+        self.assertEqual([x.value for x in m2], ["ph1", "temp1", "act1", "act2", "hum1"])

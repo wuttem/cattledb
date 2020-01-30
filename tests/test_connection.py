@@ -35,9 +35,12 @@ class ConnectionTest(unittest.TestCase):
         db.create_tables(silent=True)
 
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
-
         res = db.read_row("metadata", "abc123")
         self.assertEqual(res["p:foo"].decode("utf-8"), "bär")
+
+        db.write_config("config_key_1", [1, 4, "föo"])
+        conf = db.read_config("config_key_1")
+        self.assertEqual(conf, [1, 4, "föo"])
 
     def test_rows(self):
         inserts = []

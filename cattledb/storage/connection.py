@@ -7,6 +7,8 @@ import os
 import random
 
 from .engines import engine_factory, get_engine_capabilities
+from ..core.models import MetricDefinition, EventDefinition
+from ..core.helper import merge_lists_on_key
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +45,9 @@ class Connection(object):
             self.event_definitions += event_definitions
 
         # Register Default Data Stores
+        from .stores import ConfigStore
+        self._config_store = ConfigStore(self)
+        self.register_store(self._config_store)
         from .stores import TimeSeriesStore
         self.timeseries = TimeSeriesStore(self)
         self.register_store(self.timeseries)
@@ -128,3 +133,48 @@ class Connection(object):
     def read_row(self, table_id, row_id):
         t = self.get_table(table_id)
         return t.read_row(row_id)
+
+    # config
+    def write_config(self, key, value):
+        return self._config_store.put(key, value)
+
+    def read_config(self, key):
+        return self._config_store.get(key)
+
+    def store_metric_definitions(self):
+        data = []
+        for m in self.metrics:
+            data.append(m.to_dict())
+        self.write_config("metrics", data)
+
+    def _get_metric_definitions(self):
+        try:
+            data = self.read_config("metrics")
+        except KeyError:
+            return []
+        metrics = [MetricDefinition.from_dict(m) for m in data]
+        return metrics
+
+    def load_metric_definitions(self):
+        m_new = self._get_metric_definitions()
+        merged = merge_lists_on_key(self.metrics, m_new, key=lambda x: x.name)
+        self.metrics = merged
+
+    def store_event_definitions(self):
+        data = []
+        for e in self.event_definitions:
+            data.append(e.to_dict())
+        self.write_config("events", data)
+
+    def _get_event_definitions(self):
+        try:
+            data = self.read_config("events")
+        except KeyError:
+            return []
+        events = [EventDefinition.from_dict(e) for e in data]
+        return events
+
+    def load_event_definitions(self):
+        e_new = self._get_event_definitions()
+        merged = merge_lists_on_key(self.event_definitions, e_new, key=lambda x: x.name)
+        self.event_definitions = merged

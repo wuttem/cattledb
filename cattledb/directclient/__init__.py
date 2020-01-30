@@ -30,14 +30,14 @@ def create_client(config, setup_logging=True):
     table_prefix = config.TABLE_PREFIX
     metrics = config.METRICS
     if config.STAGING:
-         read_only = True
+        read_only = True
 
     if setup_logging:
         logging_setup(config)
 
     return CDBClient(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                      pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                      metric_definition=metrics)
+                     pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
+                     metric_definition=metrics)
 
 
 def to_pendulum(dt, allow_int=True):
@@ -131,7 +131,6 @@ class CDBClient(object):
             raise ValueError("data should be a dict")
         md = MetaDataItem(object_name, object_key, namespace, data)
         return self.db.metadata.put_metadata_items([md], internal=internal)
-
 
     def get_metadata(self, object_name, object_key, namespaces=None, internal=False):
         return self.db.metadata.get_metadata(object_name, object_key, keys=namespaces, internal=internal)

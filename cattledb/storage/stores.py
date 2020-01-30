@@ -71,7 +71,6 @@ class MetaDataStore(object):
         sig = signal('metadata.put')
         sig.send(self, info=signal_payload)
         logger.debug("PUT META: {} inserts in {}".format(len(items), timer), extra=signal_payload)
-        # print("PUT META: {} inserts in {}".format(len(items), timer))
         return len(items)
 
     def put_metadata(self, object_name, object_id, key, data, internal=False):
@@ -91,7 +90,6 @@ class MetaDataStore(object):
         timer = time.time()
 
         metadata = list()
-        #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
         gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
 
         for row_key, data_dict in gen:
@@ -113,8 +111,46 @@ class MetaDataStore(object):
         sig = signal('metadata.get')
         sig.send(self, info=signal_payload)
         logger.debug("GET METADATA: {} rows in {}".format(len(row_keys), timer), extra=signal_payload)
-        # print("GET METADATA: {} rows in {}".format(len(row_keys), timer))
         return metadata
+
+
+class ConfigStore(object):
+    TABLENAME = "cdb_config"
+    TABLEOPTIONS = {}
+    STOREID = "cdb_config"
+    COLUMN_FAMILY = "c"
+
+    def __init__(self, connection_object):
+        self.connection_object = connection_object
+
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
+
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: [cls.COLUMN_FAMILY]}
+
+    def put(self, key, value):
+        if self.connection_object.read_only:
+            raise RuntimeError("Cannot execute put config in readonly mode")
+
+        assert len(key) > 2
+
+        cn = "{}:value".format(self.COLUMN_FAMILY)
+        row_key = key
+        data = {cn: json.dumps(value)}
+        dt = self.table()
+        dt.upsert_rows([RowUpsert(row_key, data)])
+
+        logger.info("PUT CONFIG KEY: {}".format(key))
+        return True
+
+    def get(self, key):
+        cn = "{}:value".format(self.COLUMN_FAMILY)
+        row = self.table().read_row(key)  # , column_families=[self.COLUMN_FAMILY])
+        raw_value = row[cn]
+        logger.info("GET CONFIG KEY: {}".format(key))
+        return json.loads(raw_value)
 
 
 class ActivityStore(object):

@@ -35,6 +35,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
     def test_simple(self):
         db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
         db.create_tables(silent=True)
+
+        db.store_metric_definitions()
+        db.load_metric_definitions()
+
         db.timeseries._create_metric("ph", silent=True)
         db.timeseries._create_metric("act", silent=True)
         db.timeseries._create_metric("temp", silent=True)

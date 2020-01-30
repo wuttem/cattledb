@@ -131,20 +131,31 @@ class BigtableTable(StorageTable):
         return result
 
     def write_cell(self, row_id, column, value):
-        row = self._low_level.row(row_id.encode("utf-8"))
+        row = self._low_level.direct_row(row_id.encode("utf-8"))
         column_family, col = column.split(":", 1)
         row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
         row.commit()
         return 1
 
-    def read_row(self, row_id):
-        res = self._low_level.read_row(row_id.encode("utf-8"), CellsColumnLimitFilter(1))
+    def read_row(self, row_id, column_families=None):
+        filters = [CellsColumnLimitFilter(1)]
+        if column_families is not None:
+            c_filters = []
+            for c in column_families:
+                c_filters.append(FamilyNameRegexFilter(c))
+            if len(c_filters) == 1:
+                filters.append(c_filters[0])
+            elif len(c_filters) > 1:
+                filters.append(RowFilterUnion(c_filters))
+        filter_ = RowFilterChain(filters=filters)
+
+        res = self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_)
         if res is None:
             raise KeyError("row {} not found".format(row_id))
         return self.partial_row_to_dict(res)
 
     def delete_row(self, row_id, column_families=None):
-        row = self._low_level.row(row_id.encode("utf-8"))
+        row = self._low_level.direct_row(row_id.encode("utf-8"))
         if column_families is None:
             row.delete()
         else:
@@ -154,7 +165,7 @@ class BigtableTable(StorageTable):
         return 1
 
     def upsert_row(self, row_id, values):
-        row = self._low_level.row(row_id)
+        row = self._low_level.direct_row(row_id)
         for c, value in values.items():
             column_family, col = c.split(":", 1)
             row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
@@ -166,7 +177,7 @@ class BigtableTable(StorageTable):
     def upsert_rows(self, row_upserts):
         rows = []
         for r in row_upserts:
-            row = self._low_level.row(r.row_key)
+            row = self._low_level.direct_row(r.row_key)
             for c, value in r.cells.items():
                 column_family, col = c.split(":", 1)
                 row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
@@ -274,7 +285,7 @@ class BigtableTable(StorageTable):
         :rtype: int
         :returns: Counter value after incrementing.
         """
-        row = self._low_level.row(row_id.encode("utf-8"), append=True)
+        row = self._low_level.append_row(row_id.encode("utf-8"))
         column_family_id, column_qualifier = column.split(':')
         row.increment_cell_value(column_family_id.encode("utf-8"),
                                  column_qualifier.encode("utf-8"), value)

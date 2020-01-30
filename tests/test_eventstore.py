@@ -75,6 +75,10 @@ class EventStorageTest(unittest.TestCase):
         db = Connection(project_id='test-system', instance_id='test', event_definitions=EVENT_TYPES)
         db.create_tables(silent=True)
 
+        db.store_event_definitions()
+        db.load_event_definitions()
+        self.assertEqual(len(EVENT_TYPES), len(db.event_definitions))
+
         db.events.insert_event("device1", "test_daily", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
         db.events.insert_event("device1", "test_daily", pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
         db.events.insert_event("device1", "test_daily", pendulum.datetime(2015, 2, 7, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
