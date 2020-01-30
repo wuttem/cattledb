@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # coding: utf8
-from __future__ import unicode_literals
 from builtins import str
 
 import logging
@@ -33,7 +32,7 @@ def create_server(config):
     metrics = config.METRICS
     event_definitions = getattr(config, "EVENTS", None)
     if config.STAGING:
-         read_only = True
+        read_only = True
     db_connection = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
                                pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
                                metric_definition=metrics, event_definitions=event_definitions)

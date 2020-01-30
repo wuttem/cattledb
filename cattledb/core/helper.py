@@ -196,3 +196,20 @@ def list_mean(x):
     if len(x) == 1:
         return x[0]
     return sum(x) / len(x)
+
+
+def merge_lists_on_key(a, b, key):
+    keys = []
+    merged = []
+    for i in a:
+        keys.append(key(i))
+        merged.append(i)
+    for i in b:
+        k = key(i)
+        if k in keys:
+            idx = keys.index(k)
+            merged[idx] = i
+        else:
+            keys.append(k)
+            merged.append(i)
+    return merged

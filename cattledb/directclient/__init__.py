@@ -4,7 +4,10 @@
 import logging
 import logging.config
 import pendulum
+import time
+
 from datetime import datetime
+from functools import partial
 
 from ..storage.connection import Connection
 from ..storage.models import TimeSeries, EventList, MetaDataItem
@@ -27,14 +30,14 @@ def create_client(config, setup_logging=True):
     table_prefix = config.TABLE_PREFIX
     metrics = config.METRICS
     if config.STAGING:
-         read_only = True
+        read_only = True
 
     if setup_logging:
         logging_setup(config)
 
     return CDBClient(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                      pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                      metric_definition=metrics)
+                     pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
+                     metric_definition=metrics)
 
 
 def to_pendulum(dt, allow_int=True):
@@ -49,7 +52,7 @@ def to_pendulum(dt, allow_int=True):
 
 
 class CDBClient(object):
-    _enforce_read_only = True
+    _enforce_read_only = False
 
     def __init__(self, project_id, instance_id, credentials, table_prefix, metric_definition,
                  pool_size=1, read_only=True, event_definitions=None):
@@ -129,7 +132,6 @@ class CDBClient(object):
         md = MetaDataItem(object_name, object_key, namespace, data)
         return self.db.metadata.put_metadata_items([md], internal=internal)
 
-
     def get_metadata(self, object_name, object_key, namespaces=None, internal=False):
         return self.db.metadata.get_metadata(object_name, object_key, keys=namespaces, internal=internal)
 
@@ -155,3 +157,101 @@ class CDBClient(object):
         from_ts = to_pendulum(from_datetime).int_timestamp
         to_ts = to_pendulum(to_datetime).int_timestamp
         return self.db.activity.get_activity_for_reader(reader_id, from_ts, to_ts)
+
+
+class AsyncCDBClient(object):
+    def __init__(self, *args, **kwargs):
+        if "pool_size" in kwargs:
+            self.pool_size = kwargs["pool_size"]
+        else:
+            self.pool_size = 1
+            kwargs["pool_size"] = 1
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        self.loop = asyncio.get_event_loop()
+        self.executor = ThreadPoolExecutor(max_workers=self.pool_size)
+        self._client = CDBClient(*args, **kwargs)
+
+    def block(self, *args, timer=1, **kwargs):
+        time.sleep(timer)
+        return timer
+
+    async def async_block(self, *args, timer=1, **kwargs):
+        call = partial(self.block, *args, timer=timer, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    # --------------------------------------------------------------------------
+    # Timeseries
+    # --------------------------------------------------------------------------
+
+    async def get_timeseries(self, *args, **kwargs):
+        call = partial(self._client.get_timeseries, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def delete_timeseries(self, *args, **kwargs):
+        call = partial(self._client.delete_timeseries, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_last_values(self, *args, **kwargs):
+        call = partial(self._client.get_last_values, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def put_timeseries(self, *args, **kwargs):
+        call = partial(self._client.put_timeseries, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def put_timeseries_multi(self, *args, **kwargs):
+        call = partial(self._client.put_timeseries_multi, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    # --------------------------------------------------------------------------
+    # Events
+    # --------------------------------------------------------------------------
+
+    async def put_events(self, *args, **kwargs):
+        call = partial(self._client.put_events, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_events(self, *args, **kwargs):
+        call = partial(self._client.get_events, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_last_events(self, *args, **kwargs):
+        call = partial(self._client.get_last_events, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def delete_events(self, *args, **kwargs):
+        call = partial(self._client.delete_events, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    # --------------------------------------------------------------------------
+    # Metadata
+    # --------------------------------------------------------------------------
+
+    async def put_metadata(self, *args, **kwargs):
+        call = partial(self._client.put_metadata, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_metadata(self, *args, **kwargs):
+        call = partial(self._client.get_metadata, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    # --------------------------------------------------------------------------
+    # Activity
+    # --------------------------------------------------------------------------
+
+    async def incr_activity(self, *args, **kwargs):
+        call = partial(self._client.incr_activity, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_total_activity(self, *args, **kwargs):
+        call = partial(self._client.get_total_activity, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_day_activity(self, *args, **kwargs):
+        call = partial(self._client.get_day_activity, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_reader_activity(self, *args, **kwargs):
+        call = partial(self._client.get_reader_activity, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)

@@ -36,7 +36,6 @@ class DirectclientTests(unittest.TestCase):
         self.assertTrue(client.db)
 
     def test_timeseries(self):
-        CDBClient._enforce_read_only = False
         client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
                            credentials=None, table_prefix="mytestdb", read_only=False)
         # Setup
@@ -75,7 +74,6 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(r[1].first.value,  25.5)
 
     def test_events(self):
-        CDBClient._enforce_read_only = False
         client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
                            credentials=None, table_prefix="mytestdb", read_only=False)
         # Setup
@@ -111,7 +109,6 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(res[0].value["foo4"], "bar4")
 
     def test_metadata(self):
-        CDBClient._enforce_read_only = False
         client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
                            credentials=None, table_prefix="mytestdb", read_only=False)
         # Setup
@@ -129,7 +126,6 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(res[0].data, {"foo": "bar"})
 
     def test_activity(self):
-        CDBClient._enforce_read_only = False
         client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
                            credentials=None, table_prefix="mytestdb", read_only=False)
         # Setup

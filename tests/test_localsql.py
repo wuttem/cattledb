@@ -13,7 +13,7 @@ from cattledb.storage.connection import Connection
 from cattledb.storage.models import RowUpsert
 
 
-class ConnectionTest(unittest.TestCase):
+class LocalSQLTest(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -27,20 +27,15 @@ class ConnectionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.INFO)
-        # os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
-        # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_base(self):
-        db = Connection(project_id='test-system', instance_id='test')
+        db = Connection(project_id='test-system', instance_id='test', engine="localsql")
         db.create_tables(silent=True)
 
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
+
         res = db.read_row("metadata", "abc123")
         self.assertEqual(res["p:foo"].decode("utf-8"), "bär")
-
-        db.write_config("config_key_1", [1, 4, "föo"])
-        conf = db.read_config("config_key_1")
-        self.assertEqual(conf, [1, 4, "föo"])
 
     def test_rows(self):
         inserts = []
@@ -52,7 +47,7 @@ class ConnectionTest(unittest.TestCase):
         inserts.append(RowUpsert("abc#3#1", {"p:k": b"31"}))
         inserts.append(RowUpsert("abc#3#2", {"p:k": b"32"}))
 
-        db = Connection(project_id='test-system', instance_id='test')
+        db = Connection(project_id='test-system', instance_id='test', engine="localsql")
         db.create_tables(silent=True)
         table = db.metadata.table()
         table.upsert_rows(inserts)

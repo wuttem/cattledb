@@ -3,7 +3,6 @@
 
 import logging
 import time
-import six
 import struct
 import json
 
@@ -33,28 +32,9 @@ class MetaDataStore(object):
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
 
-    def _create_tables(self, silent=False):
-        i = self.connection_object.get_admin_instance()
-        tables_before = [t.table_id for t in self.connection_object.get_current_tables()]
-        logger.warning("CREATE: Existing Tables: {}".format(tables_before))
-        table_name = self.connection_object.table_with_prefix(self.TABLENAME)
-        if silent and table_name in tables_before:
-            return
-        table = i.table(table_name)
-        table.create()
-
-        # Create Column Family
-        cf1 = table.column_family("p", gc_rule=MaxVersionsGCRule(1)) # Public
-        cf1.create()
-        time.sleep(0.5)
-        cf2 = table.column_family("i", gc_rule=MaxVersionsGCRule(1)) # Internal
-        cf2.create()
-
-        tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
-        # emit after tables signal
-        after_tables = signal('metadata.after_tables')
-        after_tables.send(self)
-        logger.warning("CREATE: Created Tables After: {}".format(tables_after))
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: ["p", "i"]}
 
     @classmethod
     def get_row_key(cls, object_name, object_id):
@@ -91,7 +71,6 @@ class MetaDataStore(object):
         sig = signal('metadata.put')
         sig.send(self, info=signal_payload)
         logger.debug("PUT META: {} inserts in {}".format(len(items), timer), extra=signal_payload)
-        # print("PUT META: {} inserts in {}".format(len(items), timer))
         return len(items)
 
     def put_metadata(self, object_name, object_id, key, data, internal=False):
@@ -111,13 +90,12 @@ class MetaDataStore(object):
         timer = time.time()
 
         metadata = list()
-        #res = self.table().read_rows(row_keys=row_keys, column_families=columns)
         gen = self.table().row_generator(row_keys=row_keys, column_families=columns)
 
         for row_key, data_dict in gen:
             o_name, o_id = row_key.split("#")
             d = dict()
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -133,8 +111,46 @@ class MetaDataStore(object):
         sig = signal('metadata.get')
         sig.send(self, info=signal_payload)
         logger.debug("GET METADATA: {} rows in {}".format(len(row_keys), timer), extra=signal_payload)
-        # print("GET METADATA: {} rows in {}".format(len(row_keys), timer))
         return metadata
+
+
+class ConfigStore(object):
+    TABLENAME = "cdb_config"
+    TABLEOPTIONS = {}
+    STOREID = "cdb_config"
+    COLUMN_FAMILY = "c"
+
+    def __init__(self, connection_object):
+        self.connection_object = connection_object
+
+    def table(self):
+        return self.connection_object.get_table(self.TABLENAME)
+
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: [cls.COLUMN_FAMILY]}
+
+    def put(self, key, value):
+        if self.connection_object.read_only:
+            raise RuntimeError("Cannot execute put config in readonly mode")
+
+        assert len(key) > 2
+
+        cn = "{}:value".format(self.COLUMN_FAMILY)
+        row_key = key
+        data = {cn: json.dumps(value)}
+        dt = self.table()
+        dt.upsert_rows([RowUpsert(row_key, data)])
+
+        logger.info("PUT CONFIG KEY: {}".format(key))
+        return True
+
+    def get(self, key):
+        cn = "{}:value".format(self.COLUMN_FAMILY)
+        row = self.table().read_row(key)  # , column_families=[self.COLUMN_FAMILY])
+        raw_value = row[cn]
+        logger.info("GET CONFIG KEY: {}".format(key))
+        return json.loads(raw_value)
 
 
 class ActivityStore(object):
@@ -150,25 +166,9 @@ class ActivityStore(object):
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
 
-    def _create_tables(self, silent=False):
-        i = self.connection_object.get_admin_instance()
-        tables_before = [t.table_id for t in self.connection_object.get_current_tables()]
-        logger.warning("CREATE: Existing Tables: {}".format(tables_before))
-        table_name = self.connection_object.table_with_prefix(self.TABLENAME)
-        if silent and table_name in tables_before:
-            return
-        table = i.table(table_name)
-        table.create()
-
-        # Create Column Family
-        cf1 = table.column_family("c", gc_rule=MaxVersionsGCRule(1))
-        cf1.create()
-
-        tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
-        # emit after tables signal
-        after_tables = signal('activity.after_tables')
-        after_tables.send(self)
-        logger.warning("CREATE: Created Tables After: {}".format(tables_after))
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: ["c"]}
 
     @classmethod
     def reverse_day_key(cls, ts):
@@ -256,7 +256,7 @@ class ActivityStore(object):
         for row_key, data_dict in rowgen:
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
             # Append to Activity
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -302,7 +302,7 @@ class ActivityStore(object):
             row_keys.append(row_key)
             day = self.reverse_day_key_to_day(row_key.split("#")[-2])
 
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -343,58 +343,13 @@ class TimeSeriesStore(object):
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
 
-    def _create_tables(self, silent=False):
-        i = self.connection_object.get_admin_instance()
-        tables_before = [t.table_id for t in self.connection_object.get_current_tables()]
-        logger.warning("CREATE: Existing Tables: {}".format(tables_before))
-        table_name = self.connection_object.table_with_prefix(self.TABLENAME)
-        if silent and table_name in tables_before:
-            return
-        table = i.table(table_name)
-        table.create()
-        tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
-        # emit after tables signal
-        after_tables = signal('timeseries.after_tables')
-        after_tables.send(self)
-
-        logger.warning("CREATE: Created Tables After: {}".format(tables_after))
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: ["meta"]}
 
     def _create_metric(self, metric_name, silent=False):
-        if metric_name in self.METRIC_NAMES:
-            metric_id = self.METRIC_NAME_LOOKUP[metric_name].id
-        elif metric_name in self.METRIC_IDS:
-            metric_id = metric_name
-        else:
-            raise KeyError("metric {} not known (add it to settings)".format(metric_name))
-
-        i = self.connection_object.get_admin_instance()
-        t = i.table(self.connection_object.table_with_prefix(self.TABLENAME))
-        families_before = t.list_column_families()
-        logger.warning("CREATE CF: Existing Families: {}".format(families_before))
-        if silent and metric_id in families_before:
-            logger.warning("CREATE CF: Ignoring existing family: {}".format(metric_id))
-            return
-        cf1 = t.column_family(metric_id, gc_rule=MaxVersionsGCRule(1))
-        cf1.create()
-        logger.warning("CREATE CF: Created Family: {}".format(metric_id))
-
-    def _create_all_metrics(self):
-        to_create = [m.id for m in self.METRIC_NAME_LOOKUP.values()]
-        logger.warning("Performing CREATE CF ALL: this might take a minute")
-
-        i = self.connection_object.get_admin_instance()
-        t = i.table(self.connection_object.table_with_prefix(self.TABLENAME))
-        families_before = t.list_column_families()
-        logger.warning("CREATE CF ALL: Existing Families: {}".format(families_before))
-        for metric_id in to_create:
-            if metric_id in families_before:
-                logger.warning("CREATE CF: Ignoring existing family: {}".format(metric_id))
-                continue
-            cf1 = t.column_family(metric_id, gc_rule=MaxVersionsGCRule(1))
-            cf1.create()
-            logger.warning("CREATE CF: Created Family: {}".format(metric_id))
-            time.sleep(0.5)
-        logger.warning("CREATE CF ALL: Finished")
+        # todo: deprecate this method
+        return self.connection_object.create_metric(metric_name, silent=silent)
 
     @classmethod
     def reverse_day_key(cls, ts):
@@ -523,7 +478,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -570,7 +525,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -654,27 +609,9 @@ class EventStore(object):
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
 
-    def _create_tables(self, silent=False):
-        i = self.connection_object.get_admin_instance()
-        tables_before = [t.table_id for t in self.connection_object.get_current_tables()]
-        logger.warning("CREATE: Existing Tables: {}".format(tables_before))
-        table_name = self.connection_object.table_with_prefix(self.TABLENAME)
-        if silent and table_name in tables_before:
-            return
-        table = i.table(table_name)
-        table.create()
-
-        # Create Column Family
-        cf1 = table.column_family("e", gc_rule=MaxVersionsGCRule(1))
-        cf1.create()
-
-        tables_after = [t.table_id for t in self.connection_object.get_current_tables(force_reload=True)]
-
-        # emit after tables signal
-        after_tables = signal('timeseries.after_tables')
-        after_tables.send(self)
-
-        logger.warning("CREATE: Created Tables After: {}".format(tables_after))
+    @classmethod
+    def get_table_definitions(cls):
+        return {cls.TABLENAME: ["e"]}
 
     def get_type_for_name(self, name):
         for ev_def in self.EVENTS:
@@ -738,7 +675,7 @@ class EventStore(object):
             it = event_list.monthly_storage_buckets()
         else:
             raise ValueError("invalid EventSeriesType")
-        
+
         for ts, bucket in it:
             row_key = self.get_row_key(key, name, ts)
             row_keys.append(row_key)
@@ -794,7 +731,7 @@ class EventStore(object):
 
         events = EventList(key, name)
         for row_key, data_dict in gen:
-            for k, value in six.iteritems(data_dict):
+            for k, value in data_dict.items():
                 s = k.split(":")
                 if len(s) != 2:
                     continue
@@ -832,7 +769,7 @@ class EventStore(object):
             row_keys.append(row_key)
 
             # Append to Timeseries
-            for key, value in six.iteritems(data_dict):
+            for key, value in data_dict.items():
                 s = key.split(":")
                 if len(s) != 2:
                     continue

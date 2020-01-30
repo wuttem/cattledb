@@ -1,10 +1,6 @@
 #!/usr/bin/python
 # coding: utf8
 
-from __future__ import unicode_literals
-
-
-import six
 import abc
 import hashlib
 import pendulum
@@ -12,13 +8,15 @@ import struct
 import msgpack
 import json
 
+from enum import Enum
 from collections import namedtuple
-from cdb_ext import FastTSList, PyTSList
+from statistics import stdev, mean, median
 
 from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_monthly_left, ts_monthly_right
 from .helper import ts_hourly_left, ts_hourly_right
 from .helper import list_mean
+from ._timeseries import FloatTSList, PyTSList
 
 
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity, EventSeries
@@ -29,6 +27,76 @@ RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 _AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
+_MetricDefinition = namedtuple('_MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
+_EventDefinition = namedtuple('_EventDefinition', ['name', "type", "resolution"])
+
+
+class MetricType(Enum):
+    FLOATSERIES = 1
+    DICTSERIES = 2
+
+
+class EventSeriesType(Enum):
+    DAILY = 1
+    MONTHLY = 2
+
+
+class Resolution(Enum):
+    SECOND = 1
+    MINUTE = 2
+    HOUR = 3
+
+
+class MetricDefinition(object):
+    def __init__(self, name, id, type, delete_possible, update_possible, resolution):
+        self.name = name
+        self.id = id
+        self.type = type
+        self.delete_possible = delete_possible
+        self.update_possible = update_possible
+        self.resolution = resolution
+
+    @classmethod
+    def from_dict(cls, d):
+        name = d["name"]
+        id = d["id"]
+        t = MetricType(d["type"])
+        delete_possible = d["delete_possible"]
+        update_possible = d["update_possible"]
+        resolution = Resolution(d["resolution"])
+        return cls(name, id, t, delete_possible, update_possible, resolution)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'id': self.id,
+            'type': self.type.value,
+            'delete_possible': self.delete_possible,
+            "update_possible": self.update_possible,
+            "resolution": self.resolution.value
+        }
+
+
+class EventDefinition(object):
+    def __init__(self, name, type, resolution):
+        self.name = name
+        self.type = type
+        self.resolution = resolution
+
+    @classmethod
+    def from_dict(cls, d):
+        name = d["name"]
+        t = EventSeriesType(d["type"])
+        resolution = Resolution(d["resolution"])
+        return cls(**d)
+
+    def to_dict(self):
+        return {
+            'name': self.name,
+            'type': self.type.value,
+            "resolution": self.resolution.value
+        }
+
 
 class AggregationValue(_AggregationValue):
     def to_dict(self):
@@ -38,21 +106,14 @@ class AggregationValue(_AggregationValue):
 def full_aggregation(x):
     if len(x) <= 1:
         return AggregationValue(len(x), 0, 0, 0, 0, 0, 0)
-    
-    if six.PY2:
-        return AggregationValue(
-                count=len(x), sum=sum(x), min=min(x),
-                max=max(x), mean=sum(x)/len(x), stdev=None,
-                median=None)
-    from statistics import stdev, mean, median
+
     return AggregationValue(
         count=len(x), sum=sum(x), min=min(x),
         max=max(x), mean=mean(x), stdev=stdev(x),
         median=median(x))
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseTimeseries(object):
+class BaseTimeseries(object, metaclass=abc.ABCMeta):
     __container__ = None
 
     def __init__(self, key, metric, values=None):
@@ -376,7 +437,7 @@ class BaseTimeseries(object):
 
 
 class FastFloatTimeseries(BaseTimeseries):
-    __container__ = FastTSList
+    __container__ = FloatTSList
 
     def insert_point(self, dt, value):
         return self._data.insert_datetime(dt, float(value))
@@ -533,7 +594,7 @@ class SerializableDict(dict):
         d = Dictionary()
         pairs = []
         for k, v in self.items():
-            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
@@ -581,7 +642,7 @@ class SerializableNamespaceDict(object):
         d = MetaDataDict(namespace=self.namespace)
         pairs = []
         for k, v in self.data.items():
-            pairs.append(Pair(key=six.text_type(k), value=json.dumps(v)))
+            pairs.append(Pair(key=str(k), value=json.dumps(v)))
         d.pairs.extend(pairs)
         return d
 
