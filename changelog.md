@@ -2,7 +2,12 @@
 
 ## Version 0.5
 
-* TODO
+* Config Storage
+* Async Client
+* Thread Pooling
+* Plugable Engines
+* SQLite Engine
+* Small Improvements and Refactoring
 
 ## Version 0.4
 

@@ -4,7 +4,7 @@
 import logging
 import time
 import os
-import random
+import threading
 
 from .engines import engine_factory, get_engine_capabilities
 from ..core.models import MetricDefinition, EventDefinition
@@ -26,13 +26,14 @@ class Connection(object):
 
         self.engine_capabilities = get_engine_capabilities(self.engine_type)
 
-        self.engines = []
+        self.engines = {}
+        self.thread_local = threading.local()
         self.admin_engine = None
 
+        self.threaded_engines = False
         if self.engine_capabilities.get("threading"):
             self.pool_size = pool_size
-        else:
-            self.pool_size = 1
+            self.threaded_engines = True
 
         self.stores = {}
 
@@ -98,25 +99,35 @@ class Connection(object):
         else:
             raise KeyError("metric {} not known (add it to settings)".format(metric_name))
 
+    def _new_engine(self, admin=False):
+        return engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
+                              admin=admin, engine_options={"project_id": self.project_id,
+                                                           "instance_id": self.instance_id,
+                                                           "credentials": self.credentials,
+                                                           "data_dir": self.data_dir})
+
     def get_engine(self):
-        if len(self.engines) < 1:
-            eng = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
-                                 admin=False, engine_options={"project_id": self.project_id,
-                                                              "instance_id": self.instance_id,
-                                                              "credentials": self.credentials,
-                                                              "data_dir": self.data_dir})
-            logger.info("New Database Engine Connection created")
-            self.engines.append(eng)
-            return eng
-        return random.choice(self.engines)
+        # only one engine if no threading
+        if not self.threaded_engines:
+            if "main" not in self.engines:
+                self.engines["main"] = self._new_engine()
+                logger.warning("New Database Engine created (Thread: {})".format("main"))
+            return self.engines["main"]
+        # check if this thread already has an engine
+        try:
+            engine = self.thread_local.engine
+        except AttributeError:
+            # no engine found for this thread
+            t = threading.currentThread().getName()
+            engine = self._new_engine()
+            self.thread_local.engine = engine
+            self.engines[t] = engine
+            logger.warning("New Database Engine created (Thread: {})".format(t))
+        return engine
 
     def get_admin_engine(self):
         if self.admin_engine is None:
-            self.admin_engine = engine_factory(self.engine_type, read_only=self.read_only, table_prefix=self.table_prefix,
-                                               admin=True, engine_options={"project_id": self.project_id,
-                                                                           "instance_id": self.instance_id,
-                                                                           "credentials": self.credentials,
-                                                                           "data_dir": self.data_dir})
+            self.admin_engine = self._new_engine(admin=True)
             logger.warning("New Admin Database Engine Connection created")
         return self.admin_engine
 
