@@ -42,6 +42,6 @@ class AsyncTest(unittest.TestCase):
         res = loop.run_until_complete(client.put_metadata("object", "id1", "note2", {"föö": "bää"}))
         self.assertEqual(res, 1)
 
-        res = loop.run_until_complete(client.get_metadata("object", "id1", ["note1"]))
+        res = loop.run_until_complete(client.get_metadata("object", "id1", ["note2"]))
         self.assertEqual(len(res), 1)
-        self.assertEqual(res[0].data, {"foo": "bar"})
+        self.assertEqual(res[0].data, {"föö": "bää"})

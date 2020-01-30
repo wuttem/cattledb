@@ -6,7 +6,6 @@ language: python
 env:
   - BIGTABLE_EMULATOR_HOST=localhost:8080 CATTLEDB_CONFIGURATION=testing
 python:
-  - "3.5"
   - "3.6"
   - "3.7"
 before_install:
