@@ -101,8 +101,8 @@ class BigtableEngine(StorageEngine):
 
     def connect(self):
         if self.db_connection is None:
-            self.db_connection = bigtable.Client(project=self.project_id, admin=False, read_only=True,
-                                                credentials=self.credentials).instance(self.instance_id)
+            self.db_connection = bigtable.Client(project=self.project_id, admin=False, read_only=self.read_only,
+                                                 credentials=self.credentials).instance(self.instance_id)
         return self.db_connection
 
     def disconnect(self):
