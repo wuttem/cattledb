@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 from abc import ABCMeta, abstractmethod
 
