@@ -10,6 +10,7 @@ import datetime
 
 
 from cattledb.storage.connection import Connection
+from cattledb.settings import UnitTestConfig
 
 
 class MetaDataStorageTest(unittest.TestCase):
@@ -30,8 +31,9 @@ class MetaDataStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(project_id='test-system', instance_id='test')
-        db.create_tables(silent=True)
+        engine="localsql"
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db.database_init(silent=True)
 
         db.metadata.put_metadata("reader", "1", "note1", {"foo": "bar"})
         db.metadata.put_metadata("reader", "1", "note2", {"föö": "bää"})

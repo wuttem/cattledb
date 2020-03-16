@@ -11,7 +11,7 @@ import asyncio
 
 
 from cattledb.directclient import AsyncCDBClient
-from cattledb.settings import AVAILABLE_METRICS
+from cattledb.settings import AVAILABLE_METRICS, UnitTestConfig
 
 
 class AsyncTest(unittest.TestCase):
@@ -30,12 +30,12 @@ class AsyncTest(unittest.TestCase):
         logging.basicConfig(level=logging.INFO)
 
     def test_base(self):
-        client = AsyncCDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                                credentials=None, table_prefix="mytestdb", read_only=False)
+        client = AsyncCDBClient(engine='bigtable', engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                                table_prefix="mytestdb", read_only=False)
 
         # setup
         db = client._client.db
-        db.create_tables(silent=True)
+        db.database_init(silent=True)
 
         loop = asyncio.get_event_loop()
 

@@ -68,11 +68,17 @@ class BigtableEngine(StorageEngine):
         if self.admin_connection is None:
             self.admin_connection = bigtable.Client(project=self.project_id, admin=True,
                                                     credentials=self.credentials).instance(self.instance_id)
+            logger.warning("Created new admin connection")
         return self.admin_connection
 
     def get_table(self, table_name):
         full_table_name = self.get_full_table_name(table_name)
         return BigtableTable(self.db_connection.table(full_table_name))
+
+    def get_admin_table(self, table_name):
+        eng = self.get_admin_connection()
+        full_table_name = self.get_full_table_name(table_name)
+        return BigtableTable(eng.table(full_table_name))
 
     def setup_engine_options(self, engine_options):
         self.credentials = None
@@ -147,7 +153,10 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         res = self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_)
         if res is None:
@@ -204,7 +213,10 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         row_set = RowSet()
         if row_keys:
@@ -240,7 +252,10 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         row_set = RowSet()
         row_set.add_row_range_from_keys(start_key=row_key_prefix, start_inclusive=True)
@@ -312,3 +327,6 @@ class BigtableTable(StorageTable):
         bytes_value = column_cell[0]
         int_value, = struct.Struct('>q').unpack(bytes_value)
         return int_value
+
+    def get_column_families(self):
+        return list(self._low_level.list_column_families().keys())

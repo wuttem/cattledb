@@ -12,7 +12,7 @@ import time
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import TimeSeries
-from cattledb.settings import AVAILABLE_METRICS
+from cattledb.settings import AVAILABLE_METRICS, UnitTestConfig
 
 
 class TimeSeriesStorageTest(unittest.TestCase):
@@ -33,9 +33,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db.database_init(silent=True)
 
+        db.add_metric_definitions(AVAILABLE_METRICS)
         db.store_metric_definitions()
         db.load_metric_definitions()
 
@@ -95,8 +96,9 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(ph[0].ts, t + 501 * 600)
 
     def test_delete(self):
-        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                        metric_definitions=AVAILABLE_METRICS)
+        db.database_init(silent=True)
         db.timeseries._create_metric("ph", silent=True)
 
         base = datetime.datetime.now()
@@ -131,10 +133,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         r = db.timeseries.delete_timeseries("device", ["ph"], from_ts, to_ts)
         self.assertGreaterEqual(r, 5)
 
-
     def test_signal(self):
-        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                        metric_definitions=AVAILABLE_METRICS)
+        db.database_init(silent=True)
         db.timeseries._create_metric("temp", silent=True)
 
         d = [[int(time.time()), 11.1]]
@@ -158,8 +160,9 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertIn("info", my_put_func.call_args_list[0][1])
 
     def test_large(self):
-        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                        metric_definitions=AVAILABLE_METRICS)
+        db.database_init(silent=True)
         db.timeseries._create_metric("act", silent=True)
         db.timeseries._create_metric("temp", silent=True)
         db.timeseries._create_metric("ph", silent=True)
@@ -196,8 +199,9 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(ph[0].ts, start)
 
     def test_selective_delete(self):
-        db = Connection(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                        metric_definitions=AVAILABLE_METRICS)
+        db.database_init(silent=True)
         db.timeseries._create_metric("ph", silent=True)
         db.timeseries._create_metric("act", silent=True)
 

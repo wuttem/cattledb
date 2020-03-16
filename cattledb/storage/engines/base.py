@@ -39,6 +39,10 @@ class StorageEngine(metaclass=ABCMeta):
     def get_table(self, table_name):
         pass
 
+    @abstractmethod
+    def get_admin_table(self, table_name):
+        pass
+
     def get_full_table_name(self, table_name):
         return "{}_{}".format(self.table_prefix, table_name)
 
@@ -82,3 +86,7 @@ class StorageTable(metaclass=ABCMeta):
         generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
                                        column_families=column_families, check_prefix=check_prefix)
         return [(rk, data) for rk, data in generator]
+
+    @abstractmethod
+    def get_column_families(self):
+        pass

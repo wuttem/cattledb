@@ -23,19 +23,14 @@ def create_server(config):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
     # Setup DB
-    project_id = config.GCP_PROJECT_ID
-    instance_id = config.GCP_INSTANCE_ID
-    credentials = config.GCP_CREDENTIALS
+    engine = config.ENGINE
+    engine_options = config.ENGINE_OPTIONS
     read_only = config.READ_ONLY
-    pool_size = config.POOL_SIZE
     table_prefix = config.TABLE_PREFIX
-    metrics = config.METRICS
-    event_definitions = getattr(config, "EVENTS", None)
     if config.STAGING:
         read_only = True
-    db_connection = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                               pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                               metric_definition=metrics, event_definitions=event_definitions)
+    db_connection = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
+                               table_prefix=table_prefix)
     server.db = db_connection
 
     from .services import TimeSeriesServicer

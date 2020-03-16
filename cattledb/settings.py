@@ -6,33 +6,33 @@ import os
 from enum import Enum
 from collections import namedtuple
 
-from .core.models import MetricDefinition, EventDefinition, MetricType, EventSeriesType, Resolution
+from .core.models import MetricDefinition, EventDefinition, MetricType, EventSeriesType
 
 
 AVAILABLE_METRICS = [
-    MetricDefinition("test", "test", MetricType.FLOATSERIES, True, True, Resolution.SECOND),
+    MetricDefinition("test", "test", MetricType.FLOATSERIES, True),
 
     # Raw Metrics
-    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
-    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False, False, Resolution.MINUTE),
+    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False),
+    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False),
+    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False),
+    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False),
+    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False),
+    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False),
 
     # Stage 1
-    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("act", "act", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True, True, Resolution.MINUTE),
-    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True, True, Resolution.MINUTE)
+    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True),
+    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True),
+    MetricDefinition("act", "act", MetricType.FLOATSERIES, True),
+    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True),
+    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True),
+    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True)
 ]
 
 EVENT_TYPES = [
-    EventDefinition("test_daily", EventSeriesType.DAILY, Resolution.SECOND),
-    EventDefinition("test_monthly", EventSeriesType.MONTHLY, Resolution.MINUTE),
-    EventDefinition("test_monthly_*", EventSeriesType.MONTHLY, Resolution.MINUTE)
+    EventDefinition("test_daily", EventSeriesType.DAILY),
+    EventDefinition("test_monthly", EventSeriesType.MONTHLY),
+    EventDefinition("test_monthly_*", EventSeriesType.MONTHLY)
 ]
 
 
@@ -41,10 +41,16 @@ class BaseConfig(object):
     DEBUG = True
     STAGING = False
 
-    GCP_PROJECT_ID = 'test-system'
-    GCP_INSTANCE_ID = 'test'
-    GCP_CREDENTIALS = None
+    ENGINE = "bigtable"
+    ENGINE_OPTIONS = {
+        "credentials": None,
+        "project_id": "proj1",
+        "instance_id": "inst1",
+        "admin": True
+    }
+
     READ_ONLY = False
+    ADMIN = True
     POOL_SIZE = 10
     TABLE_PREFIX = "mycdb"
 
@@ -69,6 +75,7 @@ class BaseConfig(object):
     METRICS = AVAILABLE_METRICS
     EVENTS = EVENT_TYPES
 
+
 class DevelopmentConfig(BaseConfig):
     pass
 
@@ -78,7 +85,9 @@ class UnitTestConfig(BaseConfig):
 
 
 class LiveConfig(BaseConfig):
-    pass
+    TESTING = False
+    DEBUG = False
+    STAGING = False
 
 
 class StagingConfig(BaseConfig):

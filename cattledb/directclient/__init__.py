@@ -22,22 +22,35 @@ def logging_setup(config):
 
 def create_client(config, setup_logging=True):
     # Setup DB
-    project_id = config.GCP_PROJECT_ID
-    instance_id = config.GCP_INSTANCE_ID
-    credentials = config.GCP_CREDENTIALS
+    engine = config.ENGINE
+    engine_options = config.ENGINE_OPTIONS
     read_only = config.READ_ONLY
-    pool_size = config.POOL_SIZE
     table_prefix = config.TABLE_PREFIX
-    metrics = config.METRICS
     if config.STAGING:
         read_only = True
 
     if setup_logging:
         logging_setup(config)
 
-    return CDBClient(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                     pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                     metric_definition=metrics)
+    return CDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
+                     table_prefix=table_prefix)
+
+
+def create_async_client(config, setup_logging=True):
+    # Setup DB
+    engine = config.ENGINE
+    engine_options = config.ENGINE_OPTIONS
+    read_only = config.READ_ONLY
+    table_prefix = config.TABLE_PREFIX
+    pool_size = config.POOL_SIZE
+    if config.STAGING:
+        read_only = True
+
+    if setup_logging:
+        logging_setup(config)
+
+    return CDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
+                     table_prefix=table_prefix, pool_size=pool_size)
 
 
 def to_pendulum(dt, allow_int=True):
@@ -54,18 +67,26 @@ def to_pendulum(dt, allow_int=True):
 class CDBClient(object):
     _enforce_read_only = False
 
-    def __init__(self, project_id, instance_id, credentials, table_prefix, metric_definition,
-                 pool_size=1, read_only=True, event_definitions=None):
+    def __init__(self, engine, engine_options, table_prefix="cdb",
+                 read_only=True, admin=False):
         if CDBClient._enforce_read_only and not read_only:
             raise RuntimeError("Direct CDBClient only allowed for read_only access")
         self.read_only = read_only
-        self.db = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                             pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                             metric_definition=metric_definition, event_definitions=event_definitions)
+        self.db = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
+                             table_prefix=table_prefix, admin=admin)
 
     def raise_on_read_only(self):
         if self.read_only:
             raise RuntimeError("not possible in read only mode")
+
+    def get_connection(self):
+        return self.db
+
+    def service_init(self):
+        return self.db.service_init()
+
+    def get_database_structure(self):
+        return self.db.read_database_structure()
 
     # --------------------------------------------------------------------------
     # Timeseries
@@ -160,24 +181,33 @@ class CDBClient(object):
 
 
 class AsyncCDBClient(object):
-    def __init__(self, *args, **kwargs):
-        if "pool_size" in kwargs:
-            self.pool_size = kwargs["pool_size"]
-        else:
-            self.pool_size = 1
-            kwargs["pool_size"] = 1
+    def __init__(self, *args, loop=None, pool_size=1, **kwargs):
+        self.pool_size = pool_size
         import asyncio
         from concurrent.futures import ThreadPoolExecutor
-        self.loop = asyncio.get_event_loop()
+        if loop is None:
+            self.loop = asyncio.get_event_loop()
+        else:
+            self.loop = loop
         self.executor = ThreadPoolExecutor(max_workers=self.pool_size)
         self._client = CDBClient(*args, **kwargs)
+
+    def get_connection(self):
+        return self._client.db
 
     def block(self, *args, timer=1, **kwargs):
         time.sleep(timer)
         return timer
 
+    def service_init(self):
+        return self._client.service_init()
+
     async def async_block(self, *args, timer=1, **kwargs):
         call = partial(self.block, *args, timer=timer, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_database_structure(self, *args, **kwargs):
+        call = partial(self._client.get_database_structure, *args, **kwargs)
         return await self.loop.run_in_executor(self.executor, call)
 
     # --------------------------------------------------------------------------

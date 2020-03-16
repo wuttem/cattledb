@@ -12,7 +12,8 @@ import mock
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import EventList
-from cattledb.settings import EVENT_TYPES
+from cattledb.settings import EVENT_TYPES, UnitTestConfig
+
 
 class EventStorageTest(unittest.TestCase):
     def setUp(self):
@@ -32,8 +33,8 @@ class EventStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(project_id='test-system', instance_id='test')
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db.database_init(silent=True)
 
         db.events.insert_event("device1", "upload", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
         db.events.insert_event("device1", "upload", pendulum.datetime(2015, 2, 5, 18, 0, tz='UTC').int_timestamp, {"foo3": "bar3"})
@@ -72,8 +73,8 @@ class EventStorageTest(unittest.TestCase):
         self.assertEqual(res[0].value["foo3"], "bar3")
 
     def test_daily_monthly(self):
-        db = Connection(project_id='test-system', instance_id='test', event_definitions=EVENT_TYPES)
-        db.create_tables(silent=True)
+        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS, event_definitions=EVENT_TYPES)
+        db.database_init(silent=True)
 
         db.store_event_definitions()
         db.load_event_definitions()

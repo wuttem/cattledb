@@ -46,6 +46,10 @@ test_reqs = [
     "mock"
 ]
 
+extra_reqs = {
+    "rest": ["sanic>=19.12.2", "Flask"],
+}
+
 
 class BuildFailed(Exception):
     pass

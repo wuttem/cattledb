@@ -29,8 +29,8 @@ class LocalSQLTest(unittest.TestCase):
         logging.basicConfig(level=logging.INFO)
 
     def test_base(self):
-        db = Connection(project_id='test-system', instance_id='test', engine="localsql")
-        db.create_tables(silent=True)
+        db = Connection(engine="localsql", engine_options={"data_dir": "."})
+        db.database_init(silent=True)
 
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
 
@@ -47,8 +47,8 @@ class LocalSQLTest(unittest.TestCase):
         inserts.append(RowUpsert("abc#3#1", {"p:k": b"31"}))
         inserts.append(RowUpsert("abc#3#2", {"p:k": b"32"}))
 
-        db = Connection(project_id='test-system', instance_id='test', engine="localsql")
-        db.create_tables(silent=True)
+        db = Connection(engine="localsql", engine_options={"data_dir": "."})
+        db.database_init(silent=True)
         table = db.metadata.table()
         table.upsert_rows(inserts)
 
@@ -86,3 +86,10 @@ class LocalSQLTest(unittest.TestCase):
 
         res = table.read_rows(start_key="abc#2", end_key="abc#3#2", column_families=["i"])
         self.assertEqual(len(res), 3)
+
+    def test_schema(self):
+        db = Connection(engine="localsql", engine_options={"data_dir": "."})
+        db.database_init(silent=True)
+
+        res = db.read_database_structure()
+        assert len(res) == 5

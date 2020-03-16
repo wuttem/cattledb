@@ -178,6 +178,12 @@ def get_metric_name_lookup(metrics):
     }
 
 
+def get_event_name_lookup(events):
+    return {
+        e.name: e for e in events
+    }
+
+
 def get_metric_id_lookup(metrics):
     return {
         m.id: m for m in metrics

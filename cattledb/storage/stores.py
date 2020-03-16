@@ -12,7 +12,8 @@ from google.cloud import bigtable
 from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
 
-from ..core.helper import from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids, get_metric_names, monthly_timestamps
+from ..core.helper import (from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids,
+                           get_metric_names, monthly_timestamps, get_event_name_lookup)
 from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict,
                      ReaderActivityItem, DeviceActivityItem, RowUpsert, EventSeriesType)
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
@@ -138,7 +139,7 @@ class ConfigStore(object):
 
         cn = "{}:value".format(self.COLUMN_FAMILY)
         row_key = key
-        data = {cn: json.dumps(value)}
+        data = {cn: json.dumps(value).encode("ascii")}
         dt = self.table()
         dt.upsert_rows([RowUpsert(row_key, data)])
 
@@ -336,12 +337,21 @@ class TimeSeriesStore(object):
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.METRIC_NAME_LOOKUP = get_metric_name_lookup(self.connection_object.metrics)
-        self.METRIC_NAMES = get_metric_names(self.connection_object.metrics)
-        self.METRIC_IDS = get_metric_ids(self.connection_object.metrics)
 
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)
+
+    @property
+    def METRIC_NAME_LOOKUP(self):
+        return get_metric_name_lookup(self.connection_object.metric_definitions)
+
+    @property
+    def METRIC_NAMES(self):
+        return get_metric_names(self.connection_object.metric_definitions)
+
+    @property
+    def METRIC_IDS(self):
+        return get_metric_ids(self.connection_object.metric_definitions)
 
     @classmethod
     def get_table_definitions(cls):
@@ -599,12 +609,15 @@ class EventStore(object):
     TABLEOPTIONS = {}
     STOREID = "events"
     MAX_GET_SIZE_DAILY = 45 * 24 * 60 * 60
-    MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 *60
+    MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 * 60
     DEFAULT_SERIES_TYPE = EventSeriesType.DAILY
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
-        self.EVENTS = self.connection_object.event_definitions
+
+    @property
+    def EVENTS(self):
+        return self.connection_object.event_definitions
 
     def table(self):
         return self.connection_object.get_table(self.TABLENAME)

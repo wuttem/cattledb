@@ -88,6 +88,11 @@ class SQLiteEngine(StorageEngine):
         full_table_name = self.get_full_table_name(table_name)
         return SQLiteTable(con, full_table_name)
 
+    def get_admin_table(self, table_name):
+        if not self.admin or self.read_only:
+            raise RuntimeError("admin operations not allowed")
+        return self.get_table(table_name)
+
 
 class SQLiteTable(StorageTable):
     def __init__(self, con, table):
@@ -284,3 +289,10 @@ class SQLiteTable(StorageTable):
         d = struct.Struct('>q').pack(new_value)
         self.write_cell(row_id, column, d)
         return new_value
+
+    def get_column_families(self):
+        _SQL = "PRAGMA table_info('{}');".format(self.table)
+        cur = self.con.cursor()
+        cur.execute(_SQL)
+        columns = [r[1] for r in cur if r[1] not in ("row_meta", "k")]
+        return columns

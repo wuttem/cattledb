@@ -36,11 +36,13 @@ class DirectclientTests(unittest.TestCase):
         self.assertTrue(client.db)
 
     def test_timeseries(self):
-        client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                           credentials=None, table_prefix="mytestdb", read_only=False)
+        client = CDBClient(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                           table_prefix="mytestdb", read_only=False)
         # Setup
         db = client.db
-        db.create_tables(silent=True)
+        db.add_metric_definitions(AVAILABLE_METRICS)
+
+        db.database_init(silent=True)
         db.timeseries._create_metric("ph", silent=True)
         db.timeseries._create_metric("act", silent=True)
         db.timeseries._create_metric("temp", silent=True)
@@ -74,11 +76,11 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(r[1].first.value,  25.5)
 
     def test_events(self):
-        client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                           credentials=None, table_prefix="mytestdb", read_only=False)
+        client = CDBClient(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                           table_prefix="mytestdb", read_only=False)
         # Setup
         db = client.db
-        db.create_tables(silent=True)
+        db.database_init()
 
         res = client.delete_events("device1", "upload", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC'),
                                                         pendulum.datetime(2015, 2, 7, 17, 0, tz='UTC'))
@@ -109,11 +111,11 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(res[0].value["foo4"], "bar4")
 
     def test_metadata(self):
-        client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                           credentials=None, table_prefix="mytestdb", read_only=False)
+        client = CDBClient(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                           table_prefix="mytestdb", read_only=False)
         # Setup
         db = client.db
-        db.create_tables(silent=True)
+        db.database_init(silent=True)
 
         client.put_metadata("reader", "1", "note1", {"foo": "bar"})
         res = client.put_metadata("reader", "1", "note2", {"föö": "bää"})
@@ -126,11 +128,11 @@ class DirectclientTests(unittest.TestCase):
         self.assertEqual(res[0].data, {"foo": "bar"})
 
     def test_activity(self):
-        client = CDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                           credentials=None, table_prefix="mytestdb", read_only=False)
+        client = CDBClient(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
+                           table_prefix="mytestdb", read_only=False)
         # Setup
         db = client.db
-        db.create_tables(silent=True)
+        db.database_init(silent=True)
 
         client.incr_activity("reader1", "dev1", pendulum.datetime(2018, 2, 5, 12, 0, tz='UTC').int_timestamp, parent_ids=["parent1", "parent2"])
         client.incr_activity("reader1", "dev1", pendulum.datetime(2018, 2, 5, 13, 0, tz='UTC').int_timestamp, parent_ids=["parent1"])
