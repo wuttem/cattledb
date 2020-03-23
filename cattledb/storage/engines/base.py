@@ -74,7 +74,7 @@ class StorageTable(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_first_row(self, row_key_prefix, column_families=None):
+    def get_first_row(self, start_key, column_families=None, end_key=None):
         pass
 
     @abstractmethod

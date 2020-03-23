@@ -13,7 +13,7 @@ from google.cloud.bigtable.row_filters import CellsColumnLimitFilter
 from google.cloud.bigtable.column_family import MaxVersionsGCRule
 
 from ..core.helper import (from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids,
-                           get_metric_names, monthly_timestamps, get_event_name_lookup)
+                           get_metric_names, monthly_timestamps, get_event_name_lookup, get_metric_id_lookup)
 from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict,
                      ReaderActivityItem, DeviceActivityItem, RowUpsert, EventSeriesType)
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
@@ -116,9 +116,9 @@ class MetaDataStore(object):
 
 
 class ConfigStore(object):
-    TABLENAME = "cdb_config"
+    TABLENAME = "config"
     TABLEOPTIONS = {}
-    STOREID = "cdb_config"
+    STOREID = "config"
     COLUMN_FAMILY = "c"
 
     def __init__(self, connection_object):
@@ -353,9 +353,13 @@ class TimeSeriesStore(object):
     def METRIC_IDS(self):
         return get_metric_ids(self.connection_object.metric_definitions)
 
+    @property
+    def METRIC_ID_LOOKUP(self):
+        return get_metric_id_lookup(self.connection_object.metric_definitions)
+
     @classmethod
     def get_table_definitions(cls):
-        return {cls.TABLENAME: ["meta"]}
+        return {cls.TABLENAME: ["_meta", "_v"]}
 
     def _create_metric(self, metric_name, silent=False):
         # todo: deprecate this method
@@ -472,8 +476,20 @@ class TimeSeriesStore(object):
     def get_single_timeseries(self, key, metric, from_ts, to_ts):
         return self.get_timeseries(key, [metric], from_ts, to_ts)[0]
 
-    def get_last_value(self, key, metric):
-        row_prefix = "{}#".format(key)
+    def get_last_value(self, key, metric, min_ts=None, max_ts=None):
+        """searches for the newest value for a given metric.
+        min_ts gives the minimum to search.
+        """
+        if max_ts is not None:
+            start_search_row = self.get_row_key(key, max_ts)
+        else:
+            start_search_row = "{}#".format(key)
+
+        if min_ts is not None:
+            end_search_row = self.get_row_key(key, min_ts)
+        else:
+            end_search_row = "{}+".format(key)
+
         metric_object = self.get_metric_object(metric)
         columns = [metric_object.id]
 
@@ -482,7 +498,7 @@ class TimeSeriesStore(object):
 
         series = TimeSeries(key, metric_object.name)
         # Start scanning
-        row = self.table().get_first_row(row_prefix, column_families=columns)
+        row = self.table().get_first_row(start_search_row, column_families=columns, end_key=end_search_row)
         if row is not None:
             row_key, data_dict = row
             row_keys.append(row_key)
@@ -509,60 +525,70 @@ class TimeSeriesStore(object):
         # print("SCAN: {}.{}, {} points in {}".format(key, metric, 1, timer))
         return series
 
-    def get_last_values(self, key, metrics):
-        return [self.get_last_value(key, m) for m in metrics]
+    def get_full_timeseries(self, key):
+        return self.get_all_metrics(key, from_ts=None, to_ts=None)
 
-        if max_ts is None:
-            max_ts = int(time.time() + 24 * 60 * 60)
-        min_ts = max_ts - ((max_days + 1) * 24 * 60 * 60)
+    def get_all_metrics(self, key, from_ts, to_ts):
+        if from_ts is not None and to_ts is not None:
+            assert from_ts <= to_ts
 
-        start_search_row = self.get_row_key(key, max_ts)
-        end_search_row = self.get_row_key(key, min_ts)
-        # row_prefix = "{}#".format(key)
-        metric_objects = [self.get_metric_object(m) for m in metrics]
-        columns = ["{}".format(m.id) for m in metric_objects]
+        if to_ts is not None:
+            start_search_row = self.get_row_key(key, to_ts)
+        else:
+            start_search_row = "{}#".format(key)
+
+        if from_ts is not None:
+            end_search_row = self.get_row_key(key, from_ts)
+        else:
+            end_search_row = "{}+".format(key)
 
         timer = time.time()
         row_keys = []
 
-        timeseries = {m.id: TimeSeries(key, m.name) for m in metric_objects}
-
         # Start scanning
-        rowgen = self.table().row_generator(start_key=start_search_row,
-                                            column_families=columns, end_key=end_search_row)
+        row_gen = self.table().row_generator(start_key=start_search_row, end_key=end_search_row,
+                                             column_families=None)
+        
 
-        for row_key, data_dict in rowgen:
-            row_keys.append(row_key)
-
-            # Append to Timeseries
-            for k, value in data_dict.items():
+        timeseries = defaultdict(lambda: TimeSeries(key, "_unknown"))
+        for row_key, data_dict in row_gen:
+            for k in reversed(data_dict):
                 s = k.split(":")
                 if len(s) != 2:
                     continue
-                m = s[0]
-                if m in timeseries.keys():
-                    ts = int(s[1])
-                    timeseries[m].insert_storage_item(ts, value)
+                metric_id = s[0]
+                timestamp = int(s[1])
+                # reverse lookup
+                _all_ids = self.METRIC_ID_LOOKUP
+                if metric_id in _all_ids:
+                    metric_name = _all_ids[metric_id].name
+                else:
+                    metric_name = metric_id
+                timeseries[metric_name].insert_storage_item(timestamp, data_dict[k])
 
-            if all([len(x) >= count for x in timeseries.values()]):
-                break
-
-        out = []
         size = 0
-        for m in metric_objects:
-            t = timeseries[m.id]
-            t.trim_count_newest(count)
-            size += len(t)
-            out.append(t)
+        for name, ts in timeseries.items():
+            ts.set_metric(name)
+            if len(ts) < 1:
+                continue
+            if from_ts is not None and to_ts is not None:
+                ts.trim(from_ts, to_ts)
+            elif from_ts is not None:
+                ts.trim(from_ts, ts.ts_max)
+            elif to_ts is not None:
+                ts.trim(ts.ts_min, to_ts)
+            size += len(ts)
 
         timer = time.time() - timer
         # emit signal
-        signal_payload = {"count": len(row_keys), "row_keys": row_keys, "timer": timer, "method": "SCAN"}
-        sig = signal('timeseries.last')
+        signal_payload = {"count": len(row_keys), "timer": timer, "method": "GET"}
+        sig = signal('timeseries.full')
         sig.send(self, info=signal_payload)
-        logger.debug("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer), extra=signal_payload)
-        # print("SCAN: {}.{}, {} points in {}".format(key, metrics, 1, timer))
-        return out
+        logger.debug("FULL: {}, {} points in {}".format(key, size, timer), extra=signal_payload)
+        return list(timeseries.values())
+
+    def get_last_values(self, key, metrics):
+        return [self.get_last_value(key, m) for m in metrics]
 
     def delete_timeseries(self, key, metrics, from_ts, to_ts):
         if self.connection_object.read_only:
@@ -766,9 +792,19 @@ class EventStore(object):
     def get_last_event(self, key, name):
         return self.get_last_events(key, name, count=1)
 
-    def get_last_events(self, key, name, count=1):
+    def get_last_events(self, key, name, count=1, min_ts=None, max_ts=None):
         assert count == 1
-        row_prefix = self.get_row_key_base(key, name)
+
+        if max_ts is not None:
+            start_search_row = self.get_row_key(key, name, max_ts)
+        else:
+            start_search_row = self.get_row_key_base(key, name)
+
+        if min_ts is not None:
+            end_search_row = self.get_row_key(key, name, min_ts)
+        else:
+            end_search_row = self.get_row_key_base(key, name)[:-1] + "+"
+
         columns = ["e"]
 
         timer = time.time()
@@ -776,7 +812,7 @@ class EventStore(object):
 
         events = EventList(key, name)
         # Start scanning
-        row = self.table().get_first_row(row_prefix, column_families=columns)
+        row = self.table().get_first_row(start_search_row, column_families=columns, end_key=end_search_row)
         if row is not None:
             row_key, data_dict = row
             row_keys.append(row_key)

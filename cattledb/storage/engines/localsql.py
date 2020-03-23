@@ -178,11 +178,9 @@ class SQLiteTable(StorageTable):
         if column_families is None:
             _SQL = "DELETE FROM {} WHERE k = ?;".format(self.table)
             cur.execute(_SQL, (row_id,))
-            print(_SQL)
         else:
             ups = ", ".join(["{} = null".format(c) for c in column_families])
             _SQL = "UPDATE {} SET {} WHERE k = ?;".format(self.table, ups)
-            print(_SQL)
             cur.execute(_SQL, (row_id,))
         self.con.commit()
 
@@ -247,7 +245,7 @@ class SQLiteTable(StorageTable):
                     break
             yield (rk, curr_row_dict)
 
-    def get_first_row(self, row_key_prefix, column_families=None):
+    def get_first_row(self, start_key, column_families=None, end_key=None):
         if column_families is None:
             sel = "*"
         else:
@@ -256,7 +254,7 @@ class SQLiteTable(StorageTable):
         filter = "k >= ?"
         _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
         cur = self.con.cursor()
-        cur.execute(_SQL, (row_key_prefix,))
+        cur.execute(_SQL, (start_key,))
         cols = [t[0] for t in cur.description]
         # first should be key
         assert cols[0] == "k"
@@ -266,7 +264,7 @@ class SQLiteTable(StorageTable):
             rk = row[0]
             if len(curr_row_dict) == 0:
                 continue
-            if not rk.startswith(row_key_prefix):
+            if not rk.startswith(start_key):
                 break
             return (rk, curr_row_dict)
 

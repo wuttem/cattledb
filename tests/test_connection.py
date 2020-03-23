@@ -11,7 +11,7 @@ import datetime
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import RowUpsert
-from cattledb.settings import UnitTestConfig
+from .helper import get_unit_test_config, get_test_connection
 
 
 class ConnectionTest(unittest.TestCase):
@@ -32,7 +32,7 @@ class ConnectionTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_base(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db = get_test_connection()
         db.database_init(silent=True)
 
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
@@ -56,7 +56,7 @@ class ConnectionTest(unittest.TestCase):
         inserts.append(RowUpsert("abc#3#1", {"p:k": b"31"}))
         inserts.append(RowUpsert("abc#3#2", {"p:k": b"32"}))
 
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db = get_test_connection()
         db.database_init(silent=True)
         table = db.metadata.table()
         table.upsert_rows(inserts)

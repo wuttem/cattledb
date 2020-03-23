@@ -4,6 +4,7 @@
 import os
 import logging
 import struct
+import time
 
 from collections import OrderedDict
 
@@ -59,6 +60,7 @@ class BigtableEngine(StorageEngine):
             return
         cf1 = t.column_family(column_family, gc_rule=MaxVersionsGCRule(1))
         cf1.create()
+        time.sleep(0.25)
         logger.warning("CREATE CF: Created Family: {}".format(column_family))
         return t
 
@@ -242,7 +244,7 @@ class BigtableTable(StorageTable):
             curr_row_dict = self.partial_row_to_ordered_dict(rowdata)
             yield (rk, curr_row_dict)
 
-    def get_first_row(self, row_key_prefix, column_families=None):
+    def get_first_row(self, start_key, column_families=None, end_key=None):
         filters = [CellsColumnLimitFilter(1)]
         if column_families is not None:
             c_filters = []
@@ -258,7 +260,7 @@ class BigtableTable(StorageTable):
             filter_ = filters[0]
 
         row_set = RowSet()
-        row_set.add_row_range_from_keys(start_key=row_key_prefix, start_inclusive=True)
+        row_set.add_row_range_from_keys(start_key=start_key, start_inclusive=True, end_key=end_key)
 
         generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
 
@@ -268,7 +270,7 @@ class BigtableTable(StorageTable):
             # if rowdata is None:
             #     continue
             rk = rowdata.row_key.decode("utf-8")
-            if not rk.startswith(row_key_prefix):
+            if end_key is None and not rk.startswith(start_key):
                 break
             curr_row_dict = self.partial_row_to_dict(rowdata)
             return (rk, curr_row_dict)

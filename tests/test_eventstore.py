@@ -12,7 +12,7 @@ import mock
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import EventList
-from cattledb.settings import EVENT_TYPES, UnitTestConfig
+from .helper import get_unit_test_config, get_test_events, get_test_connection
 
 
 class EventStorageTest(unittest.TestCase):
@@ -33,7 +33,7 @@ class EventStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db = get_test_connection()
         db.database_init(silent=True)
 
         db.events.insert_event("device1", "upload", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
@@ -73,12 +73,15 @@ class EventStorageTest(unittest.TestCase):
         self.assertEqual(res[0].value["foo3"], "bar3")
 
     def test_daily_monthly(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS, event_definitions=EVENT_TYPES)
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS, event_definitions=get_test_events())
         db.database_init(silent=True)
 
         db.store_event_definitions()
         db.load_event_definitions()
-        self.assertEqual(len(EVENT_TYPES), len(db.event_definitions))
+        print(get_test_events())
+        print(db.event_definitions)
+        self.assertEqual(len(get_test_events()), len(db.event_definitions))
 
         db.events.insert_event("device1", "test_daily", pendulum.datetime(2015, 2, 5, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})
         db.events.insert_event("device1", "test_daily", pendulum.datetime(2015, 2, 6, 12, 0, tz='UTC').int_timestamp, {"foo1": "bar1"})

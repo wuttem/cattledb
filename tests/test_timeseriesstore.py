@@ -11,8 +11,8 @@ import mock
 import time
 
 from cattledb.storage.connection import Connection
-from cattledb.storage.models import TimeSeries
-from cattledb.settings import AVAILABLE_METRICS, UnitTestConfig
+from cattledb.storage.models import TimeSeries, FastDictTimeseries
+from .helper import get_unit_test_config, get_test_metrics
 
 
 class TimeSeriesStorageTest(unittest.TestCase):
@@ -29,14 +29,12 @@ class TimeSeriesStorageTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.INFO)
-        # os.environ["BIGTABLE_EMULATOR_HOST"] = "localhost:8086"
-        # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db = Connection.from_config(get_unit_test_config())
         db.database_init(silent=True)
 
-        db.add_metric_definitions(AVAILABLE_METRICS)
+        db.add_metric_definitions(get_test_metrics())
         db.store_metric_definitions()
         db.load_metric_definitions()
 
@@ -44,7 +42,8 @@ class TimeSeriesStorageTest(unittest.TestCase):
         db.timeseries._create_metric("act", silent=True)
         db.timeseries._create_metric("temp", silent=True)
 
-        t = int(time.time() - 50 * 24 * 60 * 60)
+        start = 1584521241
+        t = int(start - 50 * 24 * 60 * 60)
 
         r = db.timeseries.delete_timeseries("sensor1", ["ph", "act", "temp"], t, t + 500*600 + 24 * 60 * 60)
 
@@ -95,9 +94,28 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(len(ph), 1)
         self.assertEqual(ph[0].ts, t + 501 * 600)
 
+        res = db.timeseries.get_full_timeseries("sensor1")
+        self.assertEqual(len(res), 3)
+        self.assertEqual(len(res[0]), 502)
+        self.assertEqual(len(res[1]), 502)
+        self.assertEqual(len(res[2]), 502)
+        metrics = [x.metric for x in res]
+        self.assertIn("temp", metrics)
+        self.assertIn("act", metrics)
+        self.assertIn("ph", metrics)
+
+        r = FastDictTimeseries.from_float_timeseries(*res)
+        self.assertEqual(len(r), 502+144)
+        self.assertEqual(len(r[0].value), 2)
+        self.assertIn("ph", r[150].value)
+        self.assertIn("temp", r[150].value)
+        self.assertIn("act", r[150].value)
+        self.assertEqual(len(r[len(r)-1].value), 1)
+
     def test_delete(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
-                        metric_definitions=AVAILABLE_METRICS)
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS,
+                        metric_definitions=get_test_metrics())
         db.database_init(silent=True)
         db.timeseries._create_metric("ph", silent=True)
 
@@ -134,10 +152,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertGreaterEqual(r, 5)
 
     def test_signal(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
-                        metric_definitions=AVAILABLE_METRICS)
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS,
+                        metric_definitions=get_test_metrics())
         db.database_init(silent=True)
-        db.timeseries._create_metric("temp", silent=True)
 
         d = [[int(time.time()), 11.1]]
         data = [{"key": "sensor15",
@@ -160,12 +178,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertIn("info", my_put_func.call_args_list[0][1])
 
     def test_large(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
-                        metric_definitions=AVAILABLE_METRICS)
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS,
+                        metric_definitions=get_test_metrics())
         db.database_init(silent=True)
-        db.timeseries._create_metric("act", silent=True)
-        db.timeseries._create_metric("temp", silent=True)
-        db.timeseries._create_metric("ph", silent=True)
 
         start = 1483272000
 
@@ -199,11 +215,10 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(ph[0].ts, start)
 
     def test_selective_delete(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS,
-                        metric_definitions=AVAILABLE_METRICS)
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS,
+                        metric_definitions=get_test_metrics())
         db.database_init(silent=True)
-        db.timeseries._create_metric("ph", silent=True)
-        db.timeseries._create_metric("act", silent=True)
 
         base = datetime.datetime(2019, 2, 1, 23, 50, tzinfo=datetime.timezone.utc)
         ph_data = [(base - datetime.timedelta(minutes=10*x),  ((x % 3) + 4)) for x in range(0, 144*5)]

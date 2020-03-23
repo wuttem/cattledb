@@ -10,7 +10,7 @@ import datetime
 
 
 from cattledb.storage.connection import Connection
-from cattledb.settings import UnitTestConfig
+from .helper import get_unit_test_config, get_test_connection
 
 
 class ActivityStorageTest(unittest.TestCase):
@@ -31,7 +31,7 @@ class ActivityStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(engine=UnitTestConfig.ENGINE, engine_options=UnitTestConfig.ENGINE_OPTIONS)
+        db = get_test_connection()
         db.database_init(silent=True)
 
         db.activity.incr_activity("reader1", "dev1", pendulum.datetime(2018, 2, 5, 12, 0, tz='UTC').int_timestamp, parent_ids=["parent1", "parent2"])

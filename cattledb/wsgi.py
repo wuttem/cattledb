@@ -1,6 +1,8 @@
-from cattledb.restserver import create_app_by_config
+import os
+from cattledb.restserver import create_app_by_configfile
 
-app = create_app_by_config()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True, threaded=False)
+configfile = os.environ.get("CATTLEDB_CONFIG", None)
+
+
+app = create_app_by_configfile(configfile)

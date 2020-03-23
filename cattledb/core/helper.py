@@ -218,4 +218,14 @@ def merge_lists_on_key(a, b, key):
         else:
             keys.append(k)
             merged.append(i)
+    if len(set(keys)) != len(keys):
+        raise ValueError("multiple metric keys")
     return merged
+
+
+def import_config_file(filepath):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("current_config", filepath)
+    foo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(foo)
+    return foo

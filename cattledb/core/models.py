@@ -9,7 +9,7 @@ import msgpack
 import json
 
 from enum import Enum
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from statistics import stdev, mean, median
 
 from .helper import ts_daily_left, ts_daily_right
@@ -114,6 +114,9 @@ class BaseTimeseries(object, metaclass=abc.ABCMeta):
 
     def __len__(self):
         return len(self._data)
+
+    def set_metric(self, m):
+        self.metric = m.lower()
 
     def to_hash(self):
         s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self),
@@ -503,6 +506,10 @@ TimeSeries = FastFloatTimeseries
 class FastDictTimeseries(BaseTimeseries):
     __container__ = PyTSList
 
+    def __init__(self, *args, **kwargs):
+        super(FastDictTimeseries, self).__init__(*args, **kwargs)
+        self.columns = None
+
     def insert_point(self, dt, value):
         return self._data.insert_datetime(dt, dict(value))
 
@@ -549,6 +556,58 @@ class FastDictTimeseries(BaseTimeseries):
         p = self.to_proto()
         return p.SerializeToString()
 
+    def set_columns(self, column_list):
+        self.columns = column_list
+
+    @classmethod
+    def from_float_timeseries(cls, *float_timeseries, key=None, ts_offset=0):
+        assert len(float_timeseries) > 0
+        keys = []
+        metrics = []
+        merged = defaultdict(dict)
+        
+        # check keys and metric
+        for f in float_timeseries:
+            keys.append(f.key)
+            metrics.append(f.metric)
+
+        for f in float_timeseries:
+            for x in f.all(raw=True):
+                m = f.metric
+                merged[x.ts][m] = x.value
+
+        key = key or keys[0]
+
+        new_ts = cls(key=key, metric="multi")
+        new_ts.set_columns(metrics)
+        for k, v in merged.items():
+            new_ts._data.insert(ts=k, ts_offset=ts_offset, value=v)
+
+        return new_ts
+
+    def yield_rows(self, timestamp_format="tuple", aggregation_span=None, aggregation_type=None):
+        it = self.get_serializable_iterator(timestamp_format, aggregation_span=aggregation_span,
+                                            aggregation_type=aggregation_type)
+        if self.columns:
+            for ts, value in it:
+                if not value:
+                    row = (ts, ) + tuple(None for _ in self.columns)
+                else:
+                    row = (ts, ) + tuple(value.get(c, None) for c in self.columns)
+                yield(row)
+        else:
+            yield from it
+
+    def to_csv(self, fp):
+        import csv
+        w = csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC)
+        if self.columns:
+            w.writerow(["ts"] + [x for x in self.columns])
+        for row in self.yield_rows("utc"):
+            w.writerow(row)
+
+    def to_pandas(self):
+        raise NotImplementedError
 
 class EventList(FastDictTimeseries):
     @property

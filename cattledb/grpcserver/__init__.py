@@ -23,14 +23,7 @@ def create_server(config):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
     # Setup DB
-    engine = config.ENGINE
-    engine_options = config.ENGINE_OPTIONS
-    read_only = config.READ_ONLY
-    table_prefix = config.TABLE_PREFIX
-    if config.STAGING:
-        read_only = True
-    db_connection = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
-                               table_prefix=table_prefix)
+    db_connection = Connection.from_config(config)
     server.db = db_connection
 
     from .services import TimeSeriesServicer
@@ -49,20 +42,20 @@ def create_server(config):
     return server
 
 
-def create_server_by_config(config_name=None):
-    if config_name is None:
-        config_name = os.getenv('CATTLEDB_CONFIGURATION', 'default')
-    config_name = config_name.strip()
+# def create_server_by_config(config_name=None):
+#     if config_name is None:
+#         config_name = os.getenv('CATTLEDB_CONFIGURATION', 'default')
+#     config_name = config_name.strip()
 
-    from ..settings import available_configs
+#     from ..settings import available_configs
 
-    selected_config = available_configs[config_name]
-    logging.getLogger().warning("Using Config: {}".format(selected_config))
-    setup_logging(selected_config)
+#     selected_config = available_configs[config_name]
+#     logging.getLogger().warning("Using Config: {}".format(selected_config))
+#     setup_logging(selected_config)
 
-    # Setting Hostname
-    import socket
-    host_name = str(socket.gethostname())
-    logging.getLogger().warning("Creating gRPC Service on %s(%s)", host_name, config_name)
+#     # Setting Hostname
+#     import socket
+#     host_name = str(socket.gethostname())
+#     logging.getLogger().warning("Creating gRPC Service on %s(%s)", host_name, config_name)
 
-    return create_server(selected_config)
+#     return create_server(selected_config)

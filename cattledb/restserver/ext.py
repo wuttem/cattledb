@@ -49,13 +49,18 @@ class FlaskCDB(object):
         app.config.setdefault('CATTLEDB_READ_ONLY', self.read_only)
         app.config.setdefault('CATTLEDB_ADMIN', self.admin)
         app.config.setdefault('CATTLEDB_TABLE_PREFIX', self.table_prefix)
+        app.config.setdefault('CATTLEDB_CLIENT_CLASS', CDBClient)
 
     def _connect(self, _app):
-        _db = CDBClient(engine=_app.config["CATTLEDB_ENGINE"],
-                        engine_options=_app.config["CATTLEDB_ENGINE_OPTIONS"],
-                        read_only=_app.config["CATTLEDB_READ_ONLY"],
-                        admin=_app.config["CATTLEDB_ADMIN"],
-                        table_prefix=_app.config["CATTLEDB_TABLE_PREFIX"])
+        if _app.config["CATTLEDB_CLIENT_CLASS"] and callable(_app.config["CATTLEDB_CLIENT_CLASS"]):
+            cl = _app.config["CATTLEDB_CLIENT_CLASS"]
+        else:
+            cl = CDBClient
+        _db = cl(engine=_app.config["CATTLEDB_ENGINE"],
+                 engine_options=_app.config["CATTLEDB_ENGINE_OPTIONS"],
+                 read_only=_app.config["CATTLEDB_READ_ONLY"],
+                 admin=_app.config["CATTLEDB_ADMIN"],
+                 table_prefix=_app.config["CATTLEDB_TABLE_PREFIX"])
         _db.service_init()
         return _db
 

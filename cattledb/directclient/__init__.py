@@ -10,7 +10,7 @@ from datetime import datetime
 from functools import partial
 
 from ..storage.connection import Connection
-from ..storage.models import TimeSeries, EventList, MetaDataItem
+from ..storage.models import TimeSeries, EventList, MetaDataItem, FastDictTimeseries
 
 
 def logging_setup(config):
@@ -26,8 +26,6 @@ def create_client(config, setup_logging=True):
     engine_options = config.ENGINE_OPTIONS
     read_only = config.READ_ONLY
     table_prefix = config.TABLE_PREFIX
-    if config.STAGING:
-        read_only = True
 
     if setup_logging:
         logging_setup(config)
@@ -43,8 +41,6 @@ def create_async_client(config, setup_logging=True):
     read_only = config.READ_ONLY
     table_prefix = config.TABLE_PREFIX
     pool_size = config.POOL_SIZE
-    if config.STAGING:
-        read_only = True
 
     if setup_logging:
         logging_setup(config)
@@ -75,12 +71,20 @@ class CDBClient(object):
         self.db = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
                              table_prefix=table_prefix, admin=admin)
 
+    @classmethod
+    def from_config(cls, config):
+        return cls(engine=config.ENGINE, engine_options=config.ENGINE_OPTIONS, table_prefix=config.TABLE_PREFIX,
+                   read_only=config.READ_ONLY, admin=config.ADMIN)
+
     def raise_on_read_only(self):
         if self.read_only:
             raise RuntimeError("not possible in read only mode")
 
     def get_connection(self):
         return self.db
+
+    def info(self):
+        return self.db.info()
 
     def service_init(self):
         return self.db.service_init()
@@ -103,6 +107,9 @@ class CDBClient(object):
         to_ts = to_pendulum(to_datetime).int_timestamp
         return self.db.timeseries.delete_timeseries(key, metrics, from_ts, to_ts)
 
+    def get_last_value(self, key, metrics):
+        return self.db.timeseries.get_last_value(key, metrics)
+
     def get_last_values(self, key, metrics):
         return self.db.timeseries.get_last_values(key, metrics)
 
@@ -118,6 +125,24 @@ class CDBClient(object):
             ts = TimeSeries(item["key"], item["metric"], values=item["data"])
             res.append(self.db.timeseries.insert_timeseries(ts))
         return res
+
+    def get_multi_metrics(self, key, metrics, from_datetime, to_datetime):
+        all_timeseries = self.get_timeseries(key, metrics, from_datetime, to_datetime)
+        return FastDictTimeseries.from_float_timeseries(*all_timeseries)
+
+    def get_all_metrics(self, key, from_datetime, to_datetime):
+        from_ts = to_pendulum(from_datetime).int_timestamp
+        to_ts = to_pendulum(to_datetime).int_timestamp
+        all_timeseries = self.db.timeseries.get_all_metrics(key, from_ts, to_ts)
+        if len(all_timeseries) > 0:
+            return FastDictTimeseries.from_float_timeseries(*all_timeseries)
+        return None
+
+    def get_full_timeseries(self, key):
+        all_timeseries = self.db.timeseries.get_full_timeseries(key)
+        if len(all_timeseries) > 0:
+            return FastDictTimeseries.from_float_timeseries(*all_timeseries)
+        return None
 
     # --------------------------------------------------------------------------
     # Events
@@ -192,6 +217,14 @@ class AsyncCDBClient(object):
         self.executor = ThreadPoolExecutor(max_workers=self.pool_size)
         self._client = CDBClient(*args, **kwargs)
 
+    @classmethod
+    def from_config(cls, config, loop=None):
+        return cls(engine=config.ENGINE, engine_options=config.ENGINE_OPTIONS, table_prefix=config.TABLE_PREFIX,
+                   read_only=config.READ_ONLY, admin=config.ADMIN, pool_size=config.POOL_SIZE, loop=loop)
+
+    def info(self):
+        return self._client.info()
+
     def get_connection(self):
         return self._client.db
 
@@ -226,12 +259,24 @@ class AsyncCDBClient(object):
         call = partial(self._client.get_last_values, *args, **kwargs)
         return await self.loop.run_in_executor(self.executor, call)
 
+    async def get_last_value(self, *args, **kwargs):
+        call = partial(self._client.get_last_value, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
     async def put_timeseries(self, *args, **kwargs):
         call = partial(self._client.put_timeseries, *args, **kwargs)
         return await self.loop.run_in_executor(self.executor, call)
 
     async def put_timeseries_multi(self, *args, **kwargs):
         call = partial(self._client.put_timeseries_multi, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_all_metrics(self, *args, **kwargs):
+        call = partial(self._client.get_all_metrics, *args, **kwargs)
+        return await self.loop.run_in_executor(self.executor, call)
+
+    async def get_full_timeseries(self, *args, **kwargs):
+        call = partial(self._client.get_full_timeseries, *args, **kwargs)
         return await self.loop.run_in_executor(self.executor, call)
 
     # --------------------------------------------------------------------------
