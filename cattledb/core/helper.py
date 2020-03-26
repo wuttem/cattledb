@@ -5,6 +5,8 @@ import datetime
 import time
 import calendar
 import pendulum
+import logging
+import logging.config
 
 
 def to_ts(dt):
@@ -229,3 +231,13 @@ def import_config_file(filepath):
     foo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(foo)
     return foo
+
+
+def setup_logging(config):
+    if hasattr(config, "LOGGING_CONFIG"):
+        if not config.LOGGING_CONFIG:
+            pass
+        else:
+            logging.config.dictConfig(config.LOGGING_CONFIG)
+    else:
+        logging.basicConfig(level=logging.INFO)

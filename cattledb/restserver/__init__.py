@@ -6,13 +6,6 @@ import logging.config
 import os
 
 
-def setup_logging(config):
-    if hasattr(config, "LOGGING_CONFIG"):
-        logging.config.dictConfig(config.LOGGING_CONFIG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-
 # def init_s_db(app, loop):
 #     from ..directclient import AsyncCDBClient
 #     config = app.cdb_config
@@ -30,6 +23,8 @@ def setup_logging(config):
 
 
 def _create_app(config):
+    from ..core.helper import setup_logging
+
     from flask import Flask
     app = Flask("cattledb")
 

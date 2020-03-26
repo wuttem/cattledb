@@ -2,23 +2,21 @@
 # coding: utf-8
 from builtins import str
 
-import logging
-import logging.config
 import os
+import logging
 import grpc
 from concurrent import futures
 
 from .cdb_pb2_grpc import add_TimeSeriesServicer_to_server, add_EventsServicer_to_server, add_MetaDataServicer_to_server, add_ActivityServicer_to_server
 
 
-def setup_logging(config):
-    if hasattr(config, "LOGGING_CONFIG"):
-        logging.config.dictConfig(config.LOGGING_CONFIG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def create_server(config):
+def _create_server(config):
+    from ..core.helper import setup_logging
+    setup_logging(config)
+
     from ..storage.connection import Connection
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
@@ -40,6 +38,21 @@ def create_server(config):
     add_ActivityServicer_to_server(act_store, server)
 
     return server
+
+
+def create_server_by_configfile(configfile=None):
+    from ..core.helper import import_config_file
+    from ..settings import default as _default_config
+
+    if configfile:
+        _imported = import_config_file(configfile)
+        logger.warning("Using Config: {}".format(configfile))
+        config = _imported
+    else:
+        config = _default_config
+        logger.warning("Using Default Config")
+
+    return _create_server(config)
 
 
 # def create_server_by_config(config_name=None):

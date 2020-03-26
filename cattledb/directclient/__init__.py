@@ -11,30 +11,23 @@ from functools import partial
 
 from ..storage.connection import Connection
 from ..storage.models import TimeSeries, EventList, MetaDataItem, FastDictTimeseries
+from ..core.helper import setup_logging
 
 
-def logging_setup(config):
-    if hasattr(config, "LOGGING_CONFIG"):
-        logging.config.dictConfig(config.LOGGING_CONFIG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-
-def create_client(config, setup_logging=True):
+def create_client(config):
     # Setup DB
     engine = config.ENGINE
     engine_options = config.ENGINE_OPTIONS
     read_only = config.READ_ONLY
     table_prefix = config.TABLE_PREFIX
 
-    if setup_logging:
-        logging_setup(config)
+    setup_logging(config)
 
     return CDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
                      table_prefix=table_prefix)
 
 
-def create_async_client(config, setup_logging=True):
+def create_async_client(config):
     # Setup DB
     engine = config.ENGINE
     engine_options = config.ENGINE_OPTIONS
@@ -42,8 +35,7 @@ def create_async_client(config, setup_logging=True):
     table_prefix = config.TABLE_PREFIX
     pool_size = config.POOL_SIZE
 
-    if setup_logging:
-        logging_setup(config)
+    setup_logging(config)
 
     return CDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
                      table_prefix=table_prefix, pool_size=pool_size)
@@ -64,17 +56,18 @@ class CDBClient(object):
     _enforce_read_only = False
 
     def __init__(self, engine, engine_options, table_prefix="cdb",
-                 read_only=True, admin=False):
+                 read_only=True, admin=False, _config=None):
         if CDBClient._enforce_read_only and not read_only:
             raise RuntimeError("Direct CDBClient only allowed for read_only access")
         self.read_only = read_only
         self.db = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
-                             table_prefix=table_prefix, admin=admin)
+                             table_prefix=table_prefix, admin=admin, _config=_config)
+
 
     @classmethod
     def from_config(cls, config):
         return cls(engine=config.ENGINE, engine_options=config.ENGINE_OPTIONS, table_prefix=config.TABLE_PREFIX,
-                   read_only=config.READ_ONLY, admin=config.ADMIN)
+                   read_only=config.READ_ONLY, admin=config.ADMIN, _config=config)
 
     def raise_on_read_only(self):
         if self.read_only:
@@ -220,7 +213,7 @@ class AsyncCDBClient(object):
     @classmethod
     def from_config(cls, config, loop=None):
         return cls(engine=config.ENGINE, engine_options=config.ENGINE_OPTIONS, table_prefix=config.TABLE_PREFIX,
-                   read_only=config.READ_ONLY, admin=config.ADMIN, pool_size=config.POOL_SIZE, loop=loop)
+                   read_only=config.READ_ONLY, admin=config.ADMIN, pool_size=config.POOL_SIZE, loop=loop, _config=config)
 
     def info(self):
         return self._client.info()

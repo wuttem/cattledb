@@ -24,7 +24,7 @@ class Connection(object):
 
     def __init__(self, read_only=False, table_prefix="mycdb", engine_options=None,
                  metric_definitions=None, event_definitions=None, engine="bigtable",
-                 admin=True):
+                 admin=True, _config=None):
         self.read_only = read_only
         self.table_prefix = table_prefix
         self.engine_options = engine_options or {}
@@ -32,6 +32,7 @@ class Connection(object):
         self.data_dir = "."
         self.admin = admin
         self.init = False
+        self.config = _config
 
         self.engine_capabilities = get_engine_capabilities(self.engine_type)
 
@@ -73,7 +74,7 @@ class Connection(object):
     @classmethod
     def from_config(cls, config):
         return cls(engine=config.ENGINE, engine_options=config.ENGINE_OPTIONS, table_prefix=config.TABLE_PREFIX,
-                   read_only=config.READ_ONLY, admin=config.ADMIN)
+                   read_only=config.READ_ONLY, admin=config.ADMIN, _config=config)
 
     def info(self):
         return {

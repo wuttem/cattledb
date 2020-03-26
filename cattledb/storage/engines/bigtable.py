@@ -31,7 +31,7 @@ class BigtableEngine(StorageEngine):
         ad = self.get_admin_connection()
 
         tables_before = [t.table_id for t in ad.list_tables()]
-        logger.info("CREATE: Existing Tables: {}".format(tables_before))
+        logger.debug("CREATE: Existing Tables: {}".format(tables_before))
 
         full_table_name = self.get_full_table_name(table_name)
         if silent and full_table_name in tables_before:
@@ -54,7 +54,7 @@ class BigtableEngine(StorageEngine):
         full_table_name = self.get_full_table_name(table_name)
         t = ad.table(full_table_name)
         families_before = t.list_column_families()
-        logger.warning("CREATE CF: Existing Families: {}".format(families_before))
+        logger.debug("CREATE CF: Existing Families: {}".format(families_before))
         if silent and column_family in families_before:
             logger.warning("CREATE CF: Ignoring existing family: {}".format(column_family))
             return
