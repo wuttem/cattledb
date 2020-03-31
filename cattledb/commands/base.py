@@ -12,6 +12,7 @@ from ..core.models import MetricDefinition, EventDefinition, MetricType, EventSe
 @click.option('--force', is_flag=True)
 @click.pass_context
 def initdb(ctx, force):
+    """Initialize the Database."""
     db = ctx.obj["db"]
     config = ctx.obj["config"]
     assert db.init == False
@@ -36,6 +37,7 @@ def initdb(ctx, force):
 # @click.option('--force', is_flag=True)
 # @click.pass_context
 # def create_metrics(ctx, force):
+#     """Create all metric columns."""
 #     db = ctx.obj["db"]
 #     config = ctx.obj["config"]
 #     if force:
@@ -50,6 +52,7 @@ def initdb(ctx, force):
 @click.command()
 @click.pass_context
 def dbinfo(ctx):
+    """Show information of the selected Database."""
     db = ctx.obj["db"]
     config = ctx.obj["config"]
     db.service_init()
@@ -78,6 +81,7 @@ def dbinfo(ctx):
               is_flag=True)
 @click.pass_context
 def newmetric(ctx, metricid, metricname, metrictype, delete):
+    """Create a new metric for timeseries storage."""
     db = ctx.obj["db"]
     db.service_init()
     assert db.init == True
@@ -94,6 +98,7 @@ def newmetric(ctx, metricid, metricname, metrictype, delete):
               type=click.Choice(['daily', 'monthly'], case_sensitive=False))
 @click.pass_context
 def newevent(ctx, eventname, eventtype):
+    """Create a new event definition for the event storage."""
     db = ctx.obj["db"]
     db.service_init()
     assert db.init == True
@@ -109,6 +114,7 @@ def newevent(ctx, eventname, eventtype):
 @click.option('--debug/--nodebug', is_flag=True, default=True)
 @click.pass_context
 def runserver(ctx, port, debug):
+    """Run Rest Server (test server)."""
     from ..restserver import _create_app
     config = ctx.obj["config"]
     app = _create_app(config)
@@ -120,6 +126,7 @@ def runserver(ctx, port, debug):
 @click.argument("key")
 @click.pass_context
 def download_timeseries(ctx, key):
+    """Download data from the timeseries storage."""
     db = ctx.obj["db"]
     db.service_init()
     assert db.init == True

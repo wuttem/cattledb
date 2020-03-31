@@ -13,6 +13,7 @@ from ..directclient import CDBClient
 @click.option('--configclass', type=str)
 @click.pass_context
 def cli(ctx, configfile, configclass):
+    """CattleDB Command Line Tool"""
     ctx.ensure_object(dict)
     if configfile:
         _imported = import_config_file(configfile)
