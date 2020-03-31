@@ -1,5 +1,12 @@
 # Changlog
 
+## Version 0.6
+
+* New Configuration
+* Restoring Config State from Database
+* alpha REST Client
+* Faster Access on last values for timeseries
+
 ## Version 0.5
 
 * Config Storage
