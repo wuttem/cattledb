@@ -1,41 +1,27 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 from builtins import str
 
-import logging
-import logging.config
 import os
+import logging
 import grpc
 from concurrent import futures
 
 from .cdb_pb2_grpc import add_TimeSeriesServicer_to_server, add_EventsServicer_to_server, add_MetaDataServicer_to_server, add_ActivityServicer_to_server
 
 
-def setup_logging(config):
-    if hasattr(config, "LOGGING_CONFIG"):
-        logging.config.dictConfig(config.LOGGING_CONFIG)
-    else:
-        logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-def create_server(config):
+def _create_server(config):
+    from ..core.helper import setup_logging
+    setup_logging(config)
+
     from ..storage.connection import Connection
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=config.POOL_SIZE))
 
     # Setup DB
-    project_id = config.GCP_PROJECT_ID
-    instance_id = config.GCP_INSTANCE_ID
-    credentials = config.GCP_CREDENTIALS
-    read_only = config.READ_ONLY
-    pool_size = config.POOL_SIZE
-    table_prefix = config.TABLE_PREFIX
-    metrics = config.METRICS
-    event_definitions = getattr(config, "EVENTS", None)
-    if config.STAGING:
-        read_only = True
-    db_connection = Connection(project_id=project_id, instance_id=instance_id, read_only=read_only,
-                               pool_size=pool_size, table_prefix=table_prefix, credentials=credentials,
-                               metric_definition=metrics, event_definitions=event_definitions)
+    db_connection = Connection.from_config(config)
     server.db = db_connection
 
     from .services import TimeSeriesServicer
@@ -54,20 +40,35 @@ def create_server(config):
     return server
 
 
-def create_server_by_config(config_name=None):
-    if config_name is None:
-        config_name = os.getenv('CATTLEDB_CONFIGURATION', 'default')
-    config_name = config_name.strip()
+def create_server_by_configfile(configfile=None):
+    from ..core.helper import import_config_file
+    from ..settings import default as _default_config
 
-    from ..settings import available_configs
+    if configfile:
+        _imported = import_config_file(configfile)
+        logger.warning("Using Config: {}".format(configfile))
+        config = _imported
+    else:
+        config = _default_config
+        logger.warning("Using Default Config")
 
-    selected_config = available_configs[config_name]
-    logging.getLogger().warning("Using Config: {}".format(selected_config))
-    setup_logging(selected_config)
+    return _create_server(config)
 
-    # Setting Hostname
-    import socket
-    host_name = str(socket.gethostname())
-    logging.getLogger().warning("Creating gRPC Service on %s(%s)", host_name, config_name)
 
-    return create_server(selected_config)
+# def create_server_by_config(config_name=None):
+#     if config_name is None:
+#         config_name = os.getenv('CATTLEDB_CONFIGURATION', 'default')
+#     config_name = config_name.strip()
+
+#     from ..settings import available_configs
+
+#     selected_config = available_configs[config_name]
+#     logging.getLogger().warning("Using Config: {}".format(selected_config))
+#     setup_logging(selected_config)
+
+#     # Setting Hostname
+#     import socket
+#     host_name = str(socket.gethostname())
+#     logging.getLogger().warning("Creating gRPC Service on %s(%s)", host_name, config_name)
+
+#     return create_server(selected_config)

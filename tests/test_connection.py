@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import unittest
 import random
@@ -11,6 +11,7 @@ import datetime
 
 from cattledb.storage.connection import Connection
 from cattledb.storage.models import RowUpsert
+from .helper import get_unit_test_config, get_test_connection
 
 
 class ConnectionTest(unittest.TestCase):
@@ -31,8 +32,8 @@ class ConnectionTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_base(self):
-        db = Connection(project_id='test-system', instance_id='test')
-        db.create_tables(silent=True)
+        db = get_test_connection()
+        db.database_init(silent=True)
 
         db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
         res = db.read_row("metadata", "abc123")
@@ -41,6 +42,9 @@ class ConnectionTest(unittest.TestCase):
         db.write_config("config_key_1", [1, 4, "föo"])
         conf = db.read_config("config_key_1")
         self.assertEqual(conf, [1, 4, "föo"])
+
+        res = db.read_database_structure()
+        assert len(res) == 5
 
     def test_rows(self):
         inserts = []
@@ -52,8 +56,8 @@ class ConnectionTest(unittest.TestCase):
         inserts.append(RowUpsert("abc#3#1", {"p:k": b"31"}))
         inserts.append(RowUpsert("abc#3#2", {"p:k": b"32"}))
 
-        db = Connection(project_id='test-system', instance_id='test')
-        db.create_tables(silent=True)
+        db = get_test_connection()
+        db.database_init(silent=True)
         table = db.metadata.table()
         table.upsert_rows(inserts)
 

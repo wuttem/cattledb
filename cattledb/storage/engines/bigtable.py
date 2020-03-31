@@ -1,9 +1,10 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import os
 import logging
 import struct
+import time
 
 from collections import OrderedDict
 
@@ -30,7 +31,7 @@ class BigtableEngine(StorageEngine):
         ad = self.get_admin_connection()
 
         tables_before = [t.table_id for t in ad.list_tables()]
-        logger.info("CREATE: Existing Tables: {}".format(tables_before))
+        logger.debug("CREATE: Existing Tables: {}".format(tables_before))
 
         full_table_name = self.get_full_table_name(table_name)
         if silent and full_table_name in tables_before:
@@ -53,12 +54,13 @@ class BigtableEngine(StorageEngine):
         full_table_name = self.get_full_table_name(table_name)
         t = ad.table(full_table_name)
         families_before = t.list_column_families()
-        logger.warning("CREATE CF: Existing Families: {}".format(families_before))
+        logger.debug("CREATE CF: Existing Families: {}".format(families_before))
         if silent and column_family in families_before:
             logger.warning("CREATE CF: Ignoring existing family: {}".format(column_family))
             return
         cf1 = t.column_family(column_family, gc_rule=MaxVersionsGCRule(1))
         cf1.create()
+        time.sleep(0.25)
         logger.warning("CREATE CF: Created Family: {}".format(column_family))
         return t
 
@@ -68,11 +70,17 @@ class BigtableEngine(StorageEngine):
         if self.admin_connection is None:
             self.admin_connection = bigtable.Client(project=self.project_id, admin=True,
                                                     credentials=self.credentials).instance(self.instance_id)
+            logger.warning("Created new admin connection")
         return self.admin_connection
 
     def get_table(self, table_name):
         full_table_name = self.get_full_table_name(table_name)
         return BigtableTable(self.db_connection.table(full_table_name))
+
+    def get_admin_table(self, table_name):
+        eng = self.get_admin_connection()
+        full_table_name = self.get_full_table_name(table_name)
+        return BigtableTable(eng.table(full_table_name))
 
     def setup_engine_options(self, engine_options):
         self.credentials = None
@@ -147,7 +155,10 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         res = self._low_level.read_row(row_id.encode("utf-8"), filter_=filter_)
         if res is None:
@@ -204,7 +215,10 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         row_set = RowSet()
         if row_keys:
@@ -230,7 +244,7 @@ class BigtableTable(StorageTable):
             curr_row_dict = self.partial_row_to_ordered_dict(rowdata)
             yield (rk, curr_row_dict)
 
-    def get_first_row(self, row_key_prefix, column_families=None):
+    def get_first_row(self, start_key, column_families=None, end_key=None):
         filters = [CellsColumnLimitFilter(1)]
         if column_families is not None:
             c_filters = []
@@ -240,10 +254,13 @@ class BigtableTable(StorageTable):
                 filters.append(c_filters[0])
             elif len(c_filters) > 1:
                 filters.append(RowFilterUnion(c_filters))
-        filter_ = RowFilterChain(filters=filters)
+        if len(filters) > 1:
+            filter_ = RowFilterChain(filters=filters)
+        else:
+            filter_ = filters[0]
 
         row_set = RowSet()
-        row_set.add_row_range_from_keys(start_key=row_key_prefix, start_inclusive=True)
+        row_set.add_row_range_from_keys(start_key=start_key, start_inclusive=True, end_key=end_key)
 
         generator = self._low_level.read_rows(filter_=filter_, row_set=row_set)
 
@@ -253,7 +270,7 @@ class BigtableTable(StorageTable):
             # if rowdata is None:
             #     continue
             rk = rowdata.row_key.decode("utf-8")
-            if not rk.startswith(row_key_prefix):
+            if end_key is None and not rk.startswith(start_key):
                 break
             curr_row_dict = self.partial_row_to_dict(rowdata)
             return (rk, curr_row_dict)
@@ -312,3 +329,6 @@ class BigtableTable(StorageTable):
         bytes_value = column_cell[0]
         int_value, = struct.Struct('>q').unpack(bytes_value)
         return int_value
+
+    def get_column_families(self):
+        return list(self._low_level.list_column_families().keys())

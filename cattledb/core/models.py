@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import abc
 import hashlib
@@ -9,7 +9,7 @@ import msgpack
 import json
 
 from enum import Enum
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from statistics import stdev, mean, median
 
 from .helper import ts_daily_left, ts_daily_right
@@ -27,8 +27,6 @@ RawPoint = namedtuple('RawPoint', ['ts', 'value', 'ts_offset'])
 MetaDataItem = namedtuple('MetaDataItem', ["object_name", "object_id", "key", "data"])
 _AggregationValue = namedtuple("AggregationValue", ["count", "sum", "min", "max", "mean", "stdev", "median"])
 RowUpsert = namedtuple('RowUpsert', ['row_key', 'cells'])
-_MetricDefinition = namedtuple('_MetricDefinition', ['name', 'id', 'type', 'delete_possible', "update_possible", "resolution"])
-_EventDefinition = namedtuple('_EventDefinition', ['name', "type", "resolution"])
 
 
 class MetricType(Enum):
@@ -41,20 +39,12 @@ class EventSeriesType(Enum):
     MONTHLY = 2
 
 
-class Resolution(Enum):
-    SECOND = 1
-    MINUTE = 2
-    HOUR = 3
-
-
 class MetricDefinition(object):
-    def __init__(self, name, id, type, delete_possible, update_possible, resolution):
+    def __init__(self, name, id, type, delete_possible, _deprecated1=None, _deprecated2=None):
         self.name = name
         self.id = id
         self.type = type
         self.delete_possible = delete_possible
-        self.update_possible = update_possible
-        self.resolution = resolution
 
     @classmethod
     def from_dict(cls, d):
@@ -62,40 +52,39 @@ class MetricDefinition(object):
         id = d["id"]
         t = MetricType(d["type"])
         delete_possible = d["delete_possible"]
-        update_possible = d["update_possible"]
-        resolution = Resolution(d["resolution"])
-        return cls(name, id, t, delete_possible, update_possible, resolution)
+        return cls(name, id, t, delete_possible)
 
     def to_dict(self):
         return {
             'name': self.name,
             'id': self.id,
             'type': self.type.value,
-            'delete_possible': self.delete_possible,
-            "update_possible": self.update_possible,
-            "resolution": self.resolution.value
+            'delete_possible': self.delete_possible
         }
+
+    def __repr__(self):
+        return "Metric: {} (id={}, type={})".format(self.name, self.id, self.type)
 
 
 class EventDefinition(object):
-    def __init__(self, name, type, resolution):
+    def __init__(self, name, type, _deprecated1=None):
         self.name = name
         self.type = type
-        self.resolution = resolution
 
     @classmethod
     def from_dict(cls, d):
         name = d["name"]
         t = EventSeriesType(d["type"])
-        resolution = Resolution(d["resolution"])
-        return cls(**d)
+        return cls(name, t)
 
     def to_dict(self):
         return {
             'name': self.name,
-            'type': self.type.value,
-            "resolution": self.resolution.value
+            'type': self.type.value
         }
+
+    def __repr__(self):
+        return "Event: {} (type={})".format(self.name, self.type)
 
 
 class AggregationValue(_AggregationValue):
@@ -125,6 +114,9 @@ class BaseTimeseries(object, metaclass=abc.ABCMeta):
 
     def __len__(self):
         return len(self._data)
+
+    def set_metric(self, m):
+        self.metric = m.lower()
 
     def to_hash(self):
         s = "{}.{}.{}.{}.{}".format(self.key, self.metric, len(self),
@@ -283,8 +275,34 @@ class BaseTimeseries(object, metaclass=abc.ABCMeta):
             yield (lower_bound, [self._storage_item_at(x) for x in range(i, i + j)])
             i += j
 
-    def to_serializable(self):
-        return self._data.serializable()
+    def get_serializable_iterator(self, timestamp_format, aggregation_span=None, aggregation_type=None):
+        """
+        Possible formats: utc, local, iso, tuple, dt
+        Aggregation Spans: hourly, daily, 10min
+        Aggregation Types: mean, count, sum, min, max, all
+        """
+        data = []
+        if timestamp_format == "utc":
+            timestamp_func = lambda x: x.ts
+        elif timestamp_format == "local":
+            timestamp_func = lambda x: x.ts + x.ts_offset
+        elif timestamp_format == "iso":
+            timestamp_func = lambda x: pendulum.from_timestamp(x.ts, x.ts_offset/3600.0).isoformat()
+        elif timestamp_format == "tuple":
+            timestamp_func = lambda x: (x.ts, x.ts_offset)
+        elif timestamp_format == "dt":
+            timestamp_func = lambda x: pendulum.from_timestamp(x.ts, x.ts_offset/3600.0)
+        else:
+            raise ValueError("invalid timestamp format")
+        if aggregation_span and aggregation_type:
+            for p in self.aggregation(aggregation_span, aggregation_type, raw=True):
+                yield (timestamp_func(p), p.value)
+        else:
+            for p in self.all(raw=True):
+                yield (timestamp_func(p), p.value)
+
+    # def to_serializable(self):
+    #     return self._data.serializable()
 
     def aligned_10minute(self, raw=False):
         """Generator to data aligned to 10min period.
@@ -407,7 +425,6 @@ class BaseTimeseries(object, metaclass=abc.ABCMeta):
                 else:
                     ts = left(t[0].ts)
                 offset = t[0].ts_offset
-                #offset = t[0].dt.offset
                 dt = pendulum.from_timestamp(ts, offset/3600.0)
                 value = func([x.value for x in t])
                 yield Point(ts, value, dt)
@@ -489,6 +506,10 @@ TimeSeries = FastFloatTimeseries
 class FastDictTimeseries(BaseTimeseries):
     __container__ = PyTSList
 
+    def __init__(self, *args, **kwargs):
+        super(FastDictTimeseries, self).__init__(*args, **kwargs)
+        self.columns = None
+
     def insert_point(self, dt, value):
         return self._data.insert_datetime(dt, dict(value))
 
@@ -535,6 +556,58 @@ class FastDictTimeseries(BaseTimeseries):
         p = self.to_proto()
         return p.SerializeToString()
 
+    def set_columns(self, column_list):
+        self.columns = column_list
+
+    @classmethod
+    def from_float_timeseries(cls, *float_timeseries, key=None, ts_offset=0):
+        assert len(float_timeseries) > 0
+        keys = []
+        metrics = []
+        merged = defaultdict(dict)
+        
+        # check keys and metric
+        for f in float_timeseries:
+            keys.append(f.key)
+            metrics.append(f.metric)
+
+        for f in float_timeseries:
+            for x in f.all(raw=True):
+                m = f.metric
+                merged[x.ts][m] = x.value
+
+        key = key or keys[0]
+
+        new_ts = cls(key=key, metric="multi")
+        new_ts.set_columns(metrics)
+        for k, v in merged.items():
+            new_ts._data.insert(ts=k, ts_offset=ts_offset, value=v)
+
+        return new_ts
+
+    def yield_rows(self, timestamp_format="tuple", aggregation_span=None, aggregation_type=None):
+        it = self.get_serializable_iterator(timestamp_format, aggregation_span=aggregation_span,
+                                            aggregation_type=aggregation_type)
+        if self.columns:
+            for ts, value in it:
+                if not value:
+                    row = (ts, ) + tuple(None for _ in self.columns)
+                else:
+                    row = (ts, ) + tuple(value.get(c, None) for c in self.columns)
+                yield(row)
+        else:
+            yield from it
+
+    def to_csv(self, fp):
+        import csv
+        w = csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC)
+        if self.columns:
+            w.writerow(["ts"] + [x for x in self.columns])
+        for row in self.yield_rows("utc"):
+            w.writerow(row)
+
+    def to_pandas(self):
+        raise NotImplementedError
 
 class EventList(FastDictTimeseries):
     @property

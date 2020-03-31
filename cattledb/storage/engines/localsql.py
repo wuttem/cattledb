@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import sqlite3
 import logging
@@ -88,6 +88,11 @@ class SQLiteEngine(StorageEngine):
         full_table_name = self.get_full_table_name(table_name)
         return SQLiteTable(con, full_table_name)
 
+    def get_admin_table(self, table_name):
+        if not self.admin or self.read_only:
+            raise RuntimeError("admin operations not allowed")
+        return self.get_table(table_name)
+
 
 class SQLiteTable(StorageTable):
     def __init__(self, con, table):
@@ -173,11 +178,9 @@ class SQLiteTable(StorageTable):
         if column_families is None:
             _SQL = "DELETE FROM {} WHERE k = ?;".format(self.table)
             cur.execute(_SQL, (row_id,))
-            print(_SQL)
         else:
             ups = ", ".join(["{} = null".format(c) for c in column_families])
             _SQL = "UPDATE {} SET {} WHERE k = ?;".format(self.table, ups)
-            print(_SQL)
             cur.execute(_SQL, (row_id,))
         self.con.commit()
 
@@ -242,7 +245,7 @@ class SQLiteTable(StorageTable):
                     break
             yield (rk, curr_row_dict)
 
-    def get_first_row(self, row_key_prefix, column_families=None):
+    def get_first_row(self, start_key, column_families=None, end_key=None):
         if column_families is None:
             sel = "*"
         else:
@@ -251,7 +254,7 @@ class SQLiteTable(StorageTable):
         filter = "k >= ?"
         _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
         cur = self.con.cursor()
-        cur.execute(_SQL, (row_key_prefix,))
+        cur.execute(_SQL, (start_key,))
         cols = [t[0] for t in cur.description]
         # first should be key
         assert cols[0] == "k"
@@ -261,7 +264,7 @@ class SQLiteTable(StorageTable):
             rk = row[0]
             if len(curr_row_dict) == 0:
                 continue
-            if not rk.startswith(row_key_prefix):
+            if not rk.startswith(start_key):
                 break
             return (rk, curr_row_dict)
 
@@ -284,3 +287,10 @@ class SQLiteTable(StorageTable):
         d = struct.Struct('>q').pack(new_value)
         self.write_cell(row_id, column, d)
         return new_value
+
+    def get_column_families(self):
+        _SQL = "PRAGMA table_info('{}');".format(self.table)
+        cur = self.con.cursor()
+        cur.execute(_SQL)
+        columns = [r[1] for r in cur if r[1] not in ("row_meta", "k")]
+        return columns

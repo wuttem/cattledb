@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import unittest
 import random
@@ -10,6 +10,7 @@ import datetime
 
 
 from cattledb.storage.connection import Connection
+from .helper import get_unit_test_config, get_test_connection
 
 
 class MetaDataStorageTest(unittest.TestCase):
@@ -30,8 +31,8 @@ class MetaDataStorageTest(unittest.TestCase):
         # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/mnt/c/Users/mths/.ssh/google_gcp_credentials.json"
 
     def test_simple(self):
-        db = Connection(project_id='test-system', instance_id='test')
-        db.create_tables(silent=True)
+        db = get_test_connection()
+        db.database_init(silent=True)
 
         db.metadata.put_metadata("reader", "1", "note1", {"foo": "bar"})
         db.metadata.put_metadata("reader", "1", "note2", {"föö": "bää"})

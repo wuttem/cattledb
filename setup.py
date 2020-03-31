@@ -46,6 +46,16 @@ test_reqs = [
     "mock"
 ]
 
+extra_reqs = {
+    "rest": ["Flask>=1.1.1"],
+}
+
+entry_points = {
+    "console_scripts": [
+        "cattledb=cattledb.commands:cli"
+    ]
+}
+
 
 class BuildFailed(Exception):
     pass
@@ -139,6 +149,7 @@ def run_setup(with_extension):
         author="Matthias Wutte",
         author_email='matthias.wutte@gmail.com',
         url='https://github.com/wuttem',
+        extras_require=extra_reqs,
         packages=[
             'cattledb',
         ],
@@ -147,6 +158,7 @@ def run_setup(with_extension):
         include_package_data=True,
         install_requires=all_reqs,
         dependency_links=[],
+        entry_points=entry_points,
         zip_safe=False,
         keywords='cattledb',
         test_suite='tests',

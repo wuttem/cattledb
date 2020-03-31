@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import unittest
 import random
@@ -11,7 +11,7 @@ import asyncio
 
 
 from cattledb.directclient import AsyncCDBClient
-from cattledb.settings import AVAILABLE_METRICS
+from .helper import get_unit_test_config
 
 
 class AsyncTest(unittest.TestCase):
@@ -30,12 +30,11 @@ class AsyncTest(unittest.TestCase):
         logging.basicConfig(level=logging.INFO)
 
     def test_base(self):
-        client = AsyncCDBClient(project_id='test-system', instance_id='test', metric_definition=AVAILABLE_METRICS,
-                                credentials=None, table_prefix="mytestdb", read_only=False)
+        client = AsyncCDBClient.from_config(get_unit_test_config())
 
         # setup
         db = client._client.db
-        db.create_tables(silent=True)
+        db.database_init(silent=True)
 
         loop = asyncio.get_event_loop()
 

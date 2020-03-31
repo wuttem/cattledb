@@ -1,10 +1,12 @@
 #!/usr/bin/python
-# coding: utf8
+# coding: utf-8
 
 import datetime
 import time
 import calendar
 import pendulum
+import logging
+import logging.config
 
 
 def to_ts(dt):
@@ -178,6 +180,12 @@ def get_metric_name_lookup(metrics):
     }
 
 
+def get_event_name_lookup(events):
+    return {
+        e.name: e for e in events
+    }
+
+
 def get_metric_id_lookup(metrics):
     return {
         m.id: m for m in metrics
@@ -212,4 +220,24 @@ def merge_lists_on_key(a, b, key):
         else:
             keys.append(k)
             merged.append(i)
+    if len(set(keys)) != len(keys):
+        raise ValueError("multiple metric keys")
     return merged
+
+
+def import_config_file(filepath):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("current_config", filepath)
+    foo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(foo)
+    return foo
+
+
+def setup_logging(config):
+    if hasattr(config, "LOGGING_CONFIG"):
+        if not config.LOGGING_CONFIG:
+            pass
+        else:
+            logging.config.dictConfig(config.LOGGING_CONFIG)
+    else:
+        logging.basicConfig(level=logging.INFO)
