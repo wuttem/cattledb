@@ -23,7 +23,7 @@ except ImportError:
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
 
-with open('readme.md') as readme_file:
+with open('README.md') as readme_file:
     readme = readme_file.read()
 
 # parse version
