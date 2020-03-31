@@ -1,0 +1,6 @@
+include readme.md
+include requirements.txt
+include CMakeLists.txt
+
+graft pybind11
+graft src

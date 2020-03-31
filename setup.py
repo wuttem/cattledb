@@ -16,9 +16,9 @@ except ImportError: # for pip <= 9.0.3
     from pip.req import parse_requirements
 
 try:
-    from setuptools import setup, Extension, Command
+    from setuptools import setup, Extension, Command, find_packages
 except ImportError:
-    from distutils.core import setup, Extension, Command
+    from distutils.core import setup, Extension, Command, find_packages
 
 from distutils.command.build_ext import build_ext
 from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
@@ -150,11 +150,9 @@ def run_setup(with_extension):
         author_email='matthias.wutte@gmail.com',
         url='https://github.com/wuttem',
         extras_require=extra_reqs,
-        packages=[
-            'cattledb',
-        ],
+        packages=find_packages(),
         package_dir={'cattledb':
-                    'cattledb'},
+                     'cattledb'},
         include_package_data=True,
         install_requires=all_reqs,
         dependency_links=[],
