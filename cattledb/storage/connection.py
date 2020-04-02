@@ -130,9 +130,8 @@ class Connection(object):
                 logger.warning("New Database Engine created (Thread: {})".format("main"))
             return self.engines["main"]
         # check if this thread already has an engine
-        try:
-            engine = self.thread_local.engine
-        except AttributeError:
+        engine = getattr(self.thread_local, 'engine', None)
+        if engine is None:
             # no engine found for this thread
             t = threading.currentThread().getName()
             engine = self._new_engine()
