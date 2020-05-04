@@ -10,11 +10,6 @@ import re
 import subprocess
 import platform
 
-try: # for pip >= 10
-    from pip._internal.req import parse_requirements
-except ImportError: # for pip <= 9.0.3
-    from pip.req import parse_requirements
-
 try:
     from setuptools import setup, Extension, Command, find_packages
 except ImportError:
@@ -34,12 +29,18 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)),
 
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError)
 
-# parse_requirements() returns generator of pip.req.InstallRequirement objects
-install_reqs = parse_requirements('requirements.txt', session=False)
-
 # reqs is a list of requirement
 # e.g. ['django==1.5.1', 'mezzanine==1.4.6']
-reqs = [str(ir.req) for ir in install_reqs]
+reqs = [
+    "msgpack",
+    "pendulum>=2.0.1",
+    "grpcio",
+    "blinker",
+    "protobuf",
+    "google-cloud-bigtable==1.2.1",
+    "google-cloud-core==1.2.0",
+    "click"
+]
 
 test_reqs = [
     "pytest",

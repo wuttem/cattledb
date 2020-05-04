@@ -1,5 +1,14 @@
 # Changlog
 
+## Version 0.6.2
+
+* Fixed parse_requirements for new pip version
+
+
+## Version 0.6.1
+
+* Fixed Engine Creation for multi threaded use
+
 ## Version 0.6
 
 * New Configuration
