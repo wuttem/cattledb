@@ -16,9 +16,6 @@ from ..core.helper import merge_lists_on_key
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class Connection(object):
     MAX_THREADS = 1000
 
