@@ -433,6 +433,7 @@ class TimeSeriesStore(object):
         assert len(metrics) > 0
         assert len(metrics[0]) > 1
         timer = time.time()
+        key = key.lower()
 
         metric_objects = [self.get_metric_object(m) for m in metrics]
 
