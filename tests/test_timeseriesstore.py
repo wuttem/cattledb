@@ -61,7 +61,7 @@ class TimeSeriesStorageTest(unittest.TestCase):
         db.timeseries.insert("sensor1", "act", d3)
         db.timeseries.insert("sensor2", "ph", d3)
 
-        r = db.timeseries.get_single_timeseries("sensor1", "act", t, t + 500*600-1)
+        r = db.timeseries.get_single_timeseries("Sensor1", "act", t, t + 500*600-1)
         a = list(r.all())
         d = list(r.aggregation("daily", "mean"))
         self.assertEqual(len(a), 500)
