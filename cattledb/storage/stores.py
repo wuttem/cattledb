@@ -158,7 +158,6 @@ class ActivityStore(object):
     TABLENAME = "activity"
     TABLEOPTIONS = {}
     STOREID = "activity"
-    MAX_GET_SIZE = 90*24*60*60
     # row: org/bs/total#reversets#reader colfam: seen:, data: hourminute_device, (device1, device2, rssi, readout_ts?)
 
     def __init__(self, connection_object):
@@ -242,7 +241,6 @@ class ActivityStore(object):
 
     def get_activity_for_reader(self, reader_id, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.MAX_GET_SIZE
 
         daily_ts =  daily_timestamps(from_ts, to_ts)
         row_keys = [self.get_row_key("t", ts, reader_id=reader_id) for ts in daily_ts]
@@ -333,7 +331,6 @@ class TimeSeriesStore(object):
     TABLENAME = "timeseries"
     TABLEOPTIONS = {}
     STOREID = "timeseries"
-    MAX_GET_SIZE = 400 * 24 * 60 * 60  # A bit more than a year
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -429,7 +426,6 @@ class TimeSeriesStore(object):
 
     def get_timeseries(self, key, metrics, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.MAX_GET_SIZE
         assert len(metrics) > 0
         assert len(metrics[0]) > 1
         timer = time.time()
@@ -634,8 +630,6 @@ class EventStore(object):
     TABLENAME = "events"
     TABLEOPTIONS = {}
     STOREID = "events"
-    MAX_GET_SIZE_DAILY = 45 * 24 * 60 * 60
-    MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 * 60
     DEFAULT_SERIES_TYPE = EventSeriesType.DAILY
 
     def __init__(self, connection_object):
@@ -739,18 +733,8 @@ class EventStore(object):
     def insert_event(self, key, name, dt, data):
         return self.insert_events(EventList(key, name, [(dt, data)]))
 
-    def max_get_size(self, name):
-        t = self.get_type_for_name(name)
-        if t == EventSeriesType.DAILY:
-            return self.MAX_GET_SIZE_DAILY
-        elif t == EventSeriesType.MONTHLY:
-            return self.MAY_GET_SIZE_MONTHLY
-        else:
-            raise ValueError("invalid EventSeriesType")
-
     def get_events(self, key, name, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.max_get_size(name)
         timer = time.time()
 
         # Monthly or Daily
