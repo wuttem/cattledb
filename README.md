@@ -1,6 +1,8 @@
 # Cattle DB #
 
 [![Build Status](https://travis-ci.org/wuttem/cattledb.svg?branch=master)](https://travis-ci.org/wuttem/cattledb)
+[![Mentioned in Awesome Bigtable](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/zrosenbauer/awesome-bigtable)
+
 
 Fast BigTable Time Series Database Implementation
 
