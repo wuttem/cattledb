@@ -258,3 +258,17 @@ class TimeSeriesStorageTest(unittest.TestCase):
         self.assertEqual(len(get_timeseries("dev1", "act", from_ts, delete_start)), 144)
         self.assertEqual(len(get_timeseries("dev1", "act", delete_start, delete_end - 1)), 0)
         self.assertEqual(len(get_timeseries("dev1", "act", delete_end, to_ts)), 144*2)
+
+    def test_assert_limit(self):
+        conf = get_unit_test_config()
+        db = Connection(engine=conf.ENGINE, engine_options=conf.ENGINE_OPTIONS,
+                        metric_definitions=get_test_metrics())
+        db.database_init(silent=True)
+
+        t2 = int(time.time())
+        t1 = t2 - 1000 * 24 * 60 * 60
+        with self.assertRaises(ValueError):
+            db.timeseries.get_single_timeseries("dev1", "ph", t1, t2)
+
+        db.engine_options["assert_limits"] = False
+        db.timeseries.get_single_timeseries("dev1", "ph", t1, t2)
