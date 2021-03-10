@@ -43,7 +43,8 @@ ENGINE = "bigtable"
 ENGINE_OPTIONS = {
     "credentials": None,
     "project_id": "proj1",
-    "instance_id": "inst1"
+    "instance_id": "inst1",
+    "assert_limits": True
 }
 
 

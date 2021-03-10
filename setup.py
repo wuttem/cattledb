@@ -37,8 +37,8 @@ reqs = [
     "grpcio",
     "blinker",
     "protobuf",
-    "google-cloud-bigtable==1.2.1",
-    "google-cloud-core==1.2.0",
+    "google-cloud-bigtable>=1.2.1",
+    "google-cloud-core>=1.2.0",
     "click"
 ]
 

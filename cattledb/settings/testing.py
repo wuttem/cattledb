@@ -13,5 +13,6 @@ ENGINE_OPTIONS = {
     "credentials": None,
     "project_id": "prj1",
     "instance_id": "ins1",
-    "emulator": True
+    "emulator": True,
+    "assert_limits": True
 }

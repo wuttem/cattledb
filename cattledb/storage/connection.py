@@ -16,9 +16,6 @@ from ..core.helper import merge_lists_on_key
 logger = logging.getLogger(__name__)
 
 
-
-
-
 class Connection(object):
     MAX_THREADS = 1000
 
@@ -297,3 +294,22 @@ class Connection(object):
             raise RuntimeError("no database configuration. make sure this database is initialized.")
         self.load_event_definitions()
         self.load_metric_definitions()
+
+    def get_engine_option(self, key):
+        if self.engine_options:
+            return self.engine_options.get(key, None)
+        return None
+
+    @property
+    def enable_assert_limits(self):
+        v = self.get_engine_option("assert_limits")
+        if v is not None:
+            return v
+        return True
+
+    def assert_limits(self, b, msg, exception_class=ValueError):
+        if not b:
+            if self.enable_assert_limits:
+                raise exception_class(msg)
+            else:
+                logger.warning("Limit exceeded: {} (not raising)".format(msg))

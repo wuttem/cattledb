@@ -216,8 +216,8 @@ class ActivityStore(object):
         if self.connection_object.read_only:
             raise RuntimeError("Cannot execute incr_activity in readonly mode")
 
-        if not (time.time() - 3*365*24*60*60) < timestamp < (time.time() + 30*24*60*60):
-            raise ValueError("timestamp out of activity window -3y +30d")
+        act_limit = bool((time.time() - 30*365*24*60*60) < timestamp < (time.time() + 3*24*60*60))
+        self.connection_object.assert_limits(act_limit, "timestamp out of activity window -30y +30d")
 
         row_keys = self.get_insert_keys(reader_id, timestamp, parent_ids)
         column = "c:{}.{}".format(self.get_hour_key(timestamp), device_id)
@@ -242,7 +242,9 @@ class ActivityStore(object):
 
     def get_activity_for_reader(self, reader_id, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.MAX_GET_SIZE
+
+        act_limit = bool(to_ts - from_ts < self.MAX_GET_SIZE)
+        self.connection_object.assert_limits(act_limit, "activity timerange to large")
 
         daily_ts =  daily_timestamps(from_ts, to_ts)
         row_keys = [self.get_row_key("t", ts, reader_id=reader_id) for ts in daily_ts]
@@ -429,7 +431,10 @@ class TimeSeriesStore(object):
 
     def get_timeseries(self, key, metrics, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.MAX_GET_SIZE
+
+        ts_limit = bool(to_ts - from_ts < self.MAX_GET_SIZE)
+        self.connection_object.assert_limits(ts_limit, "timeseries timerange to large")
+
         assert len(metrics) > 0
         assert len(metrics[0]) > 1
         timer = time.time()
@@ -751,7 +756,8 @@ class EventStore(object):
 
     def get_events(self, key, name, from_ts, to_ts):
         assert from_ts <= to_ts
-        assert to_ts - from_ts < self.max_get_size(name)
+        event_limit = bool(to_ts - from_ts < self.max_get_size(name))
+        self.connection_object.assert_limits(event_limit, "event timerange to large")
         timer = time.time()
 
         # Monthly or Daily

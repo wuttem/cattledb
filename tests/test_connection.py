@@ -46,6 +46,9 @@ class ConnectionTest(unittest.TestCase):
         res = db.read_database_structure()
         assert len(res) == 5
 
+        self.assertEqual(db.get_engine_option("project_id"), "prj1")
+        self.assertEqual(db.get_engine_option("dfsfddsf"), None)
+
     def test_rows(self):
         inserts = []
         inserts.append(RowUpsert("abc#1#1", {"p:k": b"11"}))

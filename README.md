@@ -4,7 +4,13 @@
 [![Mentioned in Awesome Bigtable](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/zrosenbauer/awesome-bigtable)
 
 
-Fast BigTable Time Series Database Implementation
+Fast Time Series Database Implementation.
+
+CattleDB can store timeseries data in typical cloud noSQL databases.
+At the moment bigtable and dynamodb storage backends are implemented.
+Data can be queried by time ranges very efficiently.
+
+CattleDB can be used as a library in projects or as a standalone service with a REST/gRPC backend to put/get data.
 
 
 ## Installation
@@ -49,4 +55,10 @@ from . import cdb_pb2 as cdb__pb2
 docker build . -t mths/cattledb:latest
 docker tag mths/cattledb:latest mths/cattledb:0.1
 docker push mths/cattledb
+```
+
+## Development Build / Upload
+```
+python setup.py sdist
+twine upload dist/*
 ```

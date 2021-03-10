@@ -1,5 +1,11 @@
 # Changlog
 
+## Version 0.7
+
+* Unpined google requirement versions
+* Added option to remove MAX_LIMIT_ mode
+* Added Badge (THX @zrosenbauer)
+
 ## Version 0.6.2
 
 * Fixed parse_requirements for new pip version
