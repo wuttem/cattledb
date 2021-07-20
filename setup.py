@@ -149,11 +149,18 @@ def run_setup(with_extension):
         long_description=readme,
         author="Matthias Wutte",
         author_email='matthias.wutte@gmail.com',
+        license="MIT",
         url='https://github.com/wuttem',
         extras_require=extra_reqs,
         packages=find_packages(),
         package_dir={'cattledb':
                      'cattledb'},
+        classifiers=[
+            "Intended Audience :: Developers",
+            "Intended Audience :: System Administrators",
+            "License :: OSI Approved :: MIT License",
+            "Programming Language :: Python :: 3",
+        ],
         include_package_data=True,
         install_requires=all_reqs,
         dependency_links=[],
