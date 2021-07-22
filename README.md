@@ -1,6 +1,6 @@
 # Cattle DB #
 
-[![Build Status](https://travis-ci.org/wuttem/cattledb.svg?branch=master)](https://travis-ci.org/wuttem/cattledb)
+[![Build Tests](https://github.com/wuttem/cattledb/actions/workflows/python-package.yml/badge.svg)](https://github.com/wuttem/cattledb/actions/workflows/python-package.yml)
 [![Mentioned in Awesome Bigtable](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/zrosenbauer/awesome-bigtable)
 
 
