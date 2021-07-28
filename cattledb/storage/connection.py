@@ -30,6 +30,7 @@ class Connection(object):
         self.admin = admin
         self.init = False
         self.config = _config
+        self.table_stores = {}
 
         self.engine_capabilities = get_engine_capabilities(self.engine_type)
 
@@ -86,13 +87,18 @@ class Connection(object):
 
     def register_store(self, store):
         self.stores[store.STOREID] = store
+        for table_name, _ in store.get_table_definitions().items():
+            self.table_stores[table_name] = store
+
+    def get_store_for_table(self, table_name):
+        return self.table_stores[table_name]
 
     def create_tables(self, silent=False):
         eng = self.get_engine()
         for s in self.stores.values():
             table_def = s.get_table_definitions()
             for table_name, columns in table_def.items():
-                eng.setup_table(table_name, silent=silent)
+                eng.setup_table(table_name, silent=silent, sorted=s.SORTED)
                 for col in columns:
                     eng.setup_column_family(table_name, column_family=col, silent=silent)
 
@@ -149,16 +155,17 @@ class Connection(object):
     # Table Access Methods
     def get_table(self, table_name):
         eng = self.get_engine()
-        return eng.get_table(table_name)
+        return eng.get_table(table_name, store=self.get_store_for_table(table_name))
 
     # Shared Methods
     def write_cell(self, table_id, row_id, column, value):
         t = self.get_table(table_id)
         return t.write_cell(row_id, column, value)
 
-    def read_row(self, table_id, row_id):
+    def read_row(self, table_id, row_id, column_families=None):
+        #todo do not allow column families = none
         t = self.get_table(table_id)
-        return t.read_row(row_id)
+        return t.read_row(row_id, column_families=column_families)
 
     def read_database_structure(self):
         all_tables = []
@@ -169,7 +176,7 @@ class Connection(object):
                 entry = {
                     "name": table_name,
                     "full_name": eng.get_full_table_name(table_name),
-                    "column_families": eng.get_admin_table(table_name).get_column_families()
+                    "column_families": eng.get_admin_table(table_name, s).get_column_families()
                 }
                 all_tables.append(entry)
         return all_tables

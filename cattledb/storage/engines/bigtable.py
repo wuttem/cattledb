@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class BigtableEngine(StorageEngine):
-    def setup_table(self, table_name, silent=False):
+    def setup_table(self, table_name, silent=False, sorted=False):
         if not self.admin or self.read_only:
             raise RuntimeError("admin operations not allowed")
 
@@ -73,11 +73,11 @@ class BigtableEngine(StorageEngine):
             logger.warning("Created new admin connection")
         return self.admin_connection
 
-    def get_table(self, table_name):
+    def get_table(self, table_name, store=None):
         full_table_name = self.get_full_table_name(table_name)
         return BigtableTable(self.db_connection.table(full_table_name))
 
-    def get_admin_table(self, table_name):
+    def get_admin_table(self, table_name, store=None):
         eng = self.get_admin_connection()
         full_table_name = self.get_full_table_name(table_name)
         return BigtableTable(eng.table(full_table_name))
@@ -200,10 +200,10 @@ class BigtableTable(StorageTable):
         return responses
 
     def row_generator(self, row_keys=None, start_key=None, end_key=None,
-                      column_families=None, check_prefix=None):
+                      column_families=None, check_prefix=False):
         if row_keys is None and start_key is None:
             raise ValueError("use row_keys or start_key parameter")
-        if start_key is not None and (end_key is None and check_prefix is None):
+        if start_key is not None and (end_key is None and not check_prefix):
             raise ValueError("use start_key together with end_key or check_prefix")
 
         filters = [CellsColumnLimitFilter(1)]
@@ -239,7 +239,7 @@ class BigtableTable(StorageTable):
                 continue
             rk = rowdata.row_key.decode("utf-8")
             if check_prefix:
-                if not rk.startswith(check_prefix):
+                if not rk.startswith(start_key):
                     break
             curr_row_dict = self.partial_row_to_ordered_dict(rowdata)
             yield (rk, curr_row_dict)

@@ -28,7 +28,7 @@ class StorageEngine(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def setup_table(self, table_name, silent=False):
+    def setup_table(self, table_name, silent=False, sorted=False):
         pass
 
     @abstractmethod
@@ -36,11 +36,11 @@ class StorageEngine(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_table(self, table_name):
+    def get_table(self, table_name, store=None):
         pass
 
     @abstractmethod
-    def get_admin_table(self, table_name):
+    def get_admin_table(self, table_name, store=None):
         pass
 
     def get_full_table_name(self, table_name):
@@ -70,7 +70,7 @@ class StorageTable(metaclass=ABCMeta):
 
     @abstractmethod
     def row_generator(self, row_keys=None, start_key=None, end_key=None,
-                      column_families=None, check_prefix=None):
+                      column_families=None, check_prefix=False):
         pass
 
     @abstractmethod
@@ -82,7 +82,7 @@ class StorageTable(metaclass=ABCMeta):
         pass
 
     def read_rows(self, row_keys=None, start_key=None, end_key=None,
-                  column_families=None, check_prefix=None):
+                  column_families=None, check_prefix=False):
         generator = self.row_generator(row_keys=row_keys, start_key=start_key, end_key=end_key,
                                        column_families=column_families, check_prefix=check_prefix)
         return [(rk, data) for rk, data in generator]

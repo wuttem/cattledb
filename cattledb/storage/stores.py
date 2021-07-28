@@ -26,6 +26,8 @@ class MetaDataStore(object):
     TABLENAME = "metadata"
     TABLEOPTIONS = {}
     STOREID = "metadata"
+    SORTED = False
+    KEY_SCHEMA = "{part}"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -36,6 +38,9 @@ class MetaDataStore(object):
     @classmethod
     def get_table_definitions(cls):
         return {cls.TABLENAME: ["p", "i"]}
+
+    def all_column_families(self):
+        return self.get_table_definitions()[self.TABLENAME]
 
     @classmethod
     def get_row_key(cls, object_name, object_id):
@@ -120,6 +125,8 @@ class ConfigStore(object):
     TABLEOPTIONS = {}
     STOREID = "config"
     COLUMN_FAMILY = "c"
+    SORTED = False
+    KEY_SCHEMA = "{part}"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -130,6 +137,9 @@ class ConfigStore(object):
     @classmethod
     def get_table_definitions(cls):
         return {cls.TABLENAME: [cls.COLUMN_FAMILY]}
+
+    def all_column_families(self):
+        return self.get_table_definitions()[self.TABLENAME]
 
     def put(self, key, value):
         if self.connection_object.read_only:
@@ -148,7 +158,7 @@ class ConfigStore(object):
 
     def get(self, key):
         cn = "{}:value".format(self.COLUMN_FAMILY)
-        row = self.table().read_row(key)  # , column_families=[self.COLUMN_FAMILY])
+        row = self.table().read_row(key, column_families=[self.COLUMN_FAMILY])
         raw_value = row[cn]
         logger.info("GET CONFIG KEY: {}".format(key))
         return json.loads(raw_value)
@@ -159,6 +169,8 @@ class ActivityStore(object):
     TABLEOPTIONS = {}
     STOREID = "activity"
     MAX_GET_SIZE = 90*24*60*60
+    SORTED = True
+    KEY_SCHEMA = "{part}#{part}#{sort}"
     # row: org/bs/total#reversets#reader colfam: seen:, data: hourminute_device, (device1, device2, rssi, readout_ts?)
 
     def __init__(self, connection_object):
@@ -170,6 +182,9 @@ class ActivityStore(object):
     @classmethod
     def get_table_definitions(cls):
         return {cls.TABLENAME: ["c"]}
+
+    def all_column_families(self):
+        return self.get_table_definitions()[self.TABLENAME]
 
     @classmethod
     def reverse_day_key(cls, ts):
@@ -298,7 +313,7 @@ class ActivityStore(object):
 
         # Start scanning
         row_gen = self.table().row_generator(start_key=row_start_search, column_families=columns,
-                                             check_prefix=row_start_search)
+                                             check_prefix=True)
 
         for row_key, data_dict in row_gen:
             readout_id = row_key.split("#")[-1]
@@ -336,6 +351,8 @@ class TimeSeriesStore(object):
     TABLEOPTIONS = {}
     STOREID = "timeseries"
     MAX_GET_SIZE = 400 * 24 * 60 * 60  # A bit more than a year
+    SORTED = True
+    KEY_SCHEMA = "{part}#{sort}"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -362,6 +379,11 @@ class TimeSeriesStore(object):
     @classmethod
     def get_table_definitions(cls):
         return {cls.TABLENAME: ["_meta", "_v"]}
+
+    def all_column_families(self):
+        base = self.get_table_definitions()[self.TABLENAME]
+        added = list(self.METRIC_IDS)
+        return base + added
 
     def _create_metric(self, metric_name, silent=False):
         # todo: deprecate this method
@@ -551,6 +573,8 @@ class TimeSeriesStore(object):
         timer = time.time()
         row_keys = []
 
+        # TODO dont get all column families ? maybe
+
         # Start scanning
         row_gen = self.table().row_generator(start_key=start_search_row, end_key=end_search_row,
                                              column_families=None)
@@ -643,6 +667,8 @@ class EventStore(object):
     MAX_GET_SIZE_DAILY = 45 * 24 * 60 * 60
     MAY_GET_SIZE_MONTHLY = 4 * 365 * 24 * 60 * 60
     DEFAULT_SERIES_TYPE = EventSeriesType.DAILY
+    SORTED = True
+    KEY_SCHEMA = "{part}#{part}#{sort}"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -657,6 +683,9 @@ class EventStore(object):
     @classmethod
     def get_table_definitions(cls):
         return {cls.TABLENAME: ["e"]}
+
+    def all_column_families(self):
+        return self.get_table_definitions()[self.TABLENAME]
 
     def get_type_for_name(self, name):
         for ev_def in self.EVENTS:
@@ -863,8 +892,9 @@ class EventStore(object):
         row_keys = [self.get_row_key(key, name, ts) for ts in it]
 
         table = self.table()
+        columns = ["e"]
         for row_key in row_keys:
-            table.delete_row(row_key)
+            table.delete_row(row_key, column_families=columns)
 
         timer = time.time() - timer
         count = len(row_keys)

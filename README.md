@@ -22,9 +22,19 @@ pip install ./cattledb
 
 ## Run Docker Emulator for Tests on Machine
 
+Bigtable
+
 ```bash
 docker run -it -p 8080:8080 spotify/bigtable-emulator:latest
 export BIGTABLE_EMULATOR_HOST=localhost:8080
+pytest tests
+```
+
+DynamoDB
+
+```bash
+docker run -it -p 8000:8000 amazon/dynamodb-local:latest
+export DYNAMO_EMULATOR_HOST=localhost:8000
 pytest tests
 ```
 

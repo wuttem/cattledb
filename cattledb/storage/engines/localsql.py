@@ -40,7 +40,7 @@ class SQLiteEngine(StorageEngine):
             self.db_connection.close()
             self.db_connection = None
 
-    def setup_table(self, table_name, silent=False):
+    def setup_table(self, table_name, silent=False, sorted=False):
         if not self.admin or self.read_only:
             raise RuntimeError("admin operations not allowed")
 
@@ -83,12 +83,12 @@ class SQLiteEngine(StorageEngine):
         self.disconnect()
         logger.warning("CREATE CF: Created Family: {}".format(column_family))
 
-    def get_table(self, table_name):
+    def get_table(self, table_name, store=None):
         con = self.connect()
         full_table_name = self.get_full_table_name(table_name)
         return SQLiteTable(con, full_table_name)
 
-    def get_admin_table(self, table_name):
+    def get_admin_table(self, table_name, store=None):
         if not self.admin or self.read_only:
             raise RuntimeError("admin operations not allowed")
         return self.get_table(table_name)
@@ -201,10 +201,10 @@ class SQLiteTable(StorageTable):
         return res
 
     def row_generator(self, row_keys=None, start_key=None, end_key=None,
-                      column_families=None, check_prefix=None):
+                      column_families=None, check_prefix=False):
         if row_keys is None and start_key is None:
             raise ValueError("use row_keys or start_key parameter")
-        if start_key is not None and (end_key is None and check_prefix is None):
+        if start_key is not None and (end_key is None and not check_prefix):
             raise ValueError("use start_key together with end_key or check_prefix")
 
         if column_families is None:
@@ -241,7 +241,7 @@ class SQLiteTable(StorageTable):
             if len(curr_row_dict) == 0:
                 continue
             if check_prefix:
-                if not rk.startswith(check_prefix):
+                if not rk.startswith(start_key):
                     break
             yield (rk, curr_row_dict)
 
