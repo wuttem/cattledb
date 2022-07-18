@@ -4,6 +4,10 @@
 from abc import ABCMeta, abstractmethod
 
 
+class NoTableError(KeyError):
+    pass
+
+
 class StorageEngine(metaclass=ABCMeta):
     def __init__(self, engine_options, read_only=False, table_prefix="mycdb", admin=False):
         self.read_only = read_only

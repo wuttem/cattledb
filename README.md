@@ -6,7 +6,7 @@
 
 Fast Time Series Database Implementation.
 
-CattleDB can store timeseries data in typical cloud noSQL databases.
+CattleDB can store timeseries data in various cloud noSQL databases.
 At the moment bigtable and dynamodb storage backends are implemented.
 Data can be queried by time ranges very efficiently.
 

@@ -5,6 +5,7 @@ import logging
 import time
 import struct
 import json
+import decimal
 
 from blinker import signal
 from collections import namedtuple, defaultdict
@@ -283,7 +284,11 @@ class ActivityStore(object):
                     continue
                 day_hour = "{}{}".format(day, p[0])
                 # parse value
-                int_value, = struct.Struct('>q').unpack(value)
+                if isinstance(value, decimal.Decimal):
+                    int_value = int(value)
+                else:
+                    int_value, = struct.Struct('>q').unpack(value)
+
                 activitys[day_hour][p[1]] += int_value
 
         timer = time.time() - timer

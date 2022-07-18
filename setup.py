@@ -36,7 +36,7 @@ reqs = [
     "pendulum>=2.0.1",
     "grpcio",
     "blinker",
-    "protobuf",
+    "protobuf<4.0.0dev",
     "google-cloud-bigtable>=1.2.1",
     "google-cloud-core>=1.2.0",
     "click"
