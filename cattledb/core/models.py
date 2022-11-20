@@ -16,10 +16,13 @@ from .helper import ts_daily_left, ts_daily_right
 from .helper import ts_monthly_left, ts_monthly_right
 from .helper import ts_hourly_left, ts_hourly_right
 from .helper import list_mean
-from ._timeseries import FloatTSList, PyTSList
+from ._timeseries import FloatTSList, PyTSList, c_ext
 
 
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, Dictionary, DictTimeSeries, Pair, MetaDataDict, ReaderActivity, DeviceActivity, EventSeries
+
+
+FAST = True if c_ext else False
 
 
 Point = namedtuple('Point', ['ts', 'value', 'dt'])

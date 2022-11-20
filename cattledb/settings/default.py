@@ -8,31 +8,37 @@ from cattledb.core.models import MetricDefinition, EventDefinition, MetricType, 
 
 
 METRICS = [
-    MetricDefinition("test", "test", MetricType.FLOATSERIES, True),
-
-    # Raw Metrics
-    MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False),
-    MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False),
-    MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False),
-    MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False),
-    MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False),
-    MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False),
-
-    # Stage 1
-    MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True),
-    MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True),
-    MetricDefinition("act", "act", MetricType.FLOATSERIES, True),
-    MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True),
-    MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True),
-    MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True)
+     MetricDefinition("temperature", "temp", MetricType.FLOATSERIES, True),
+     MetricDefinition("humidity", "hum", MetricType.FLOATSERIES, True)
 ]
 
+# METRICS = [
+#     MetricDefinition("test", "test", MetricType.FLOATSERIES, True),
 
-EVENTS = [
-    EventDefinition("test_daily", EventSeriesType.DAILY),
-    EventDefinition("test_monthly", EventSeriesType.MONTHLY),
-    EventDefinition("test_monthly_*", EventSeriesType.MONTHLY)
-]
+#     # Raw Metrics
+#     MetricDefinition("rawph", "rph", MetricType.FLOATSERIES, False),
+#     MetricDefinition("adcph", "aph", MetricType.FLOATSERIES, False),
+#     MetricDefinition("rawtemp", "rtp", MetricType.FLOATSERIES, False),
+#     MetricDefinition("adctemp", "atp", MetricType.FLOATSERIES, False),
+#     MetricDefinition("rawact", "rac", MetricType.FLOATSERIES, False),
+#     MetricDefinition("rawhum", "rhu", MetricType.FLOATSERIES, False),
+
+#     # Stage 1
+#     MetricDefinition("ph", "ph", MetricType.FLOATSERIES, True),
+#     MetricDefinition("temp", "tmp", MetricType.FLOATSERIES, True),
+#     MetricDefinition("act", "act", MetricType.FLOATSERIES, True),
+#     MetricDefinition("hum", "hum", MetricType.FLOATSERIES, True),
+#     MetricDefinition("act_index", "aci", MetricType.FLOATSERIES, True),
+#     MetricDefinition("rawphuncorrected", "uph", MetricType.FLOATSERIES, True)
+# ]
+
+EVENTS = []
+
+# EVENTS = [
+#     EventDefinition("test_daily", EventSeriesType.DAILY),
+#     EventDefinition("test_monthly", EventSeriesType.MONTHLY),
+#     EventDefinition("test_monthly_*", EventSeriesType.MONTHLY)
+# ]
 
 
 TESTING = False

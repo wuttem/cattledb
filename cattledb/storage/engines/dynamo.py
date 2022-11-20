@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import Binary
 
-from .base import StorageEngine, StorageTable
+from .base import StorageEngine, StorageTable, NoTableError
 
 
 logger = logging.getLogger(__name__)
@@ -196,7 +196,7 @@ class DynamoTable(StorageTable):
 
     def get_column_families(self):
         return self._store.all_column_families()
-        raise NotImplementedError("not supported for dynamo")
+        # raise NotImplementedError("not supported for dynamo")
 
     def get_first_row(self, start_key, column_families=None, end_key=None):
         gen = self.row_generator(start_key=start_key, column_families=column_families, check_prefix=True, limit=1)
@@ -262,7 +262,24 @@ class DynamoTable(StorageTable):
         # assert False
 
     def increment_counter(self, row_id, column, value):
-        raise NotImplementedError
+        if ":" in column:
+            cf, k = column.split(":", 1)
+        else:
+            cf = "default"
+            k = column
+        
+        rk = self._to_dynamo_key(row_id, cf=cf)
+
+        update_expression = "ADD #key :incr".format(key=k)
+        update_values = {":incr": value}
+        update_names = {"#key": k}
+
+        res = self._low_level.update_item(Key=rk.to_dict(),
+                                          UpdateExpression=update_expression,
+                                          ExpressionAttributeValues=update_values,
+                                          ExpressionAttributeNames=update_names)
+
+        return res
 
     def get_key_from_dict(self, d, cf="default"):
         # try to remove prefix
@@ -299,7 +316,15 @@ class DynamoTable(StorageTable):
                 "Key": k.to_dict()
             }
 
-            res = self._low_level.get_item(**params)
+            try:
+                res = self._low_level.get_item(**params)
+            except ClientError as e:
+                if e.__class__.__name__ == 'ResourceNotFoundException':
+                    logger.warning(e)
+                    raise NoTableError('ResourceNotFoundException for table {}'.format(self._table_name))
+                else:
+                    raise
+
             if "Item" in res and res["Item"]:
                 out.update(self.item_to_dict(res["Item"], cf))
 
