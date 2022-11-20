@@ -16,6 +16,10 @@ from .base import StorageEngine, StorageTable
 logger = logging.getLogger(__name__)
 
 
+class NoTableError(KeyError):
+    pass
+
+
 class SQLiteEngine(StorageEngine):
     def setup_engine_options(self, engine_options):
         self.data_dir = None
@@ -166,7 +170,13 @@ class SQLiteTable(StorageTable):
             sel = ", ".join(["k"] + column_families)
         _SQL = "SELECT {} FROM {} WHERE k = ?;".format(sel, self.table)
         cur = self.con.cursor()
-        cur.execute(_SQL, (row_id,))
+        try:
+            cur.execute(_SQL, (row_id,))
+        except OperationalError as e:
+            if "no such table" in str(e):
+                raise NoTableError(e)
+            else:
+                raise
         cols = [t[0] for t in cur.description]
         res = cur.fetchone()
         if res:

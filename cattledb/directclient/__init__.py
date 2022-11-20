@@ -37,8 +37,8 @@ def create_async_client(config):
 
     setup_logging(config)
 
-    return CDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
-                     table_prefix=table_prefix, pool_size=pool_size)
+    return AsyncCDBClient(engine=engine, engine_options=engine_options, read_only=read_only,
+                          table_prefix=table_prefix, pool_size=pool_size)
 
 
 def to_pendulum(dt, allow_int=True):
