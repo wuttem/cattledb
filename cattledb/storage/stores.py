@@ -12,7 +12,7 @@ from collections import namedtuple, defaultdict
 
 from ..core.helper import (from_ts, daily_timestamps, get_metric_name_lookup, get_metric_ids,
                            get_metric_names, monthly_timestamps, get_event_name_lookup, get_metric_id_lookup)
-from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict,
+from .models import (TimeSeries, EventList, MetaDataItem, SerializableDict, FColumn,
                      ReaderActivityItem, DeviceActivityItem, RowUpsert, EventSeriesType)
 from ..grpcserver.cdb_pb2 import FloatTimeSeries, FloatTimeSeriesList
 
@@ -54,7 +54,7 @@ class MetaDataStore(object):
             if not isinstance(i.data, dict):
                 raise ValueError("Item {}.{}.{} is no dict".format(i.object_name, i.object_id, i.key))
 
-        column = "i:" if internal else "p:"
+        cf = "i" if internal else "p"
 
         timer = time.time()
         row_keys = []
@@ -62,7 +62,7 @@ class MetaDataStore(object):
         for i in items:
             row_key = self.get_row_key(i.object_name, i.object_id)
             row_keys.append(row_key)
-            cn = "{}{}".format(column, i.key)
+            cn = FColumn(cf, i.key)
             data = {cn: SerializableDict(i.data).to_msgpack()}
             upserts.append(RowUpsert(row_key, data))
 
@@ -145,7 +145,7 @@ class ConfigStore(object):
 
         assert len(key) > 2
 
-        cn = "{}:value".format(self.COLUMN_FAMILY)
+        cn = FColumn(self.COLUMN_FAMILY, "value")
         row_key = key
         data = {cn: json.dumps(value).encode("ascii")}
         dt = self.table()
@@ -156,6 +156,7 @@ class ConfigStore(object):
 
     def get(self, key):
         cn = "{}:value".format(self.COLUMN_FAMILY)
+        #cn = FColumn(self.COLUMN_FAMILY, "value")
         row = self.table().read_row(key, column_families=[self.COLUMN_FAMILY])
         raw_value = row[cn]
         logger.info("GET CONFIG KEY: {}".format(key))
@@ -169,6 +170,7 @@ class ActivityStore(object):
     MAX_GET_SIZE = 90*24*60*60
     SORTED = True
     KEY_SCHEMA = "{part}#{part}#{sort}"
+    COLUMN_FAMILY = "c"
     # row: org/bs/total#reversets#reader colfam: seen:, data: hourminute_device, (device1, device2, rssi, readout_ts?)
 
     def __init__(self, connection_object):
@@ -179,7 +181,7 @@ class ActivityStore(object):
 
     @classmethod
     def get_table_definitions(cls):
-        return {cls.TABLENAME: ["c"]}
+        return {cls.TABLENAME: [cls.COLUMN_FAMILY]}
 
     def all_column_families(self):
         return self.get_table_definitions()[self.TABLENAME]
@@ -233,7 +235,8 @@ class ActivityStore(object):
         self.connection_object.assert_limits(act_limit, "timestamp out of activity window -30y +30d")
 
         row_keys = self.get_insert_keys(reader_id, timestamp, parent_ids)
-        column = "c:{}.{}".format(self.get_hour_key(timestamp), device_id)
+        cn = "{}.{}".format(self.get_hour_key(timestamp), device_id)
+        column = FColumn(self.COLUMN_FAMILY, cn)
 
         timer = time.time()
         res = []
@@ -261,7 +264,7 @@ class ActivityStore(object):
 
         daily_ts =  daily_timestamps(from_ts, to_ts)
         row_keys = [self.get_row_key("t", ts, reader_id=reader_id) for ts in daily_ts]
-        columns = ["c"]
+        columns = [self.COLUMN_FAMILY]
 
         timer = time.time()
 
@@ -305,7 +308,7 @@ class ActivityStore(object):
 
     def get_activity_for_day(self, parent_id, day_ts):
         row_start_search = self.get_row_key(parent_id, day_ts)
-        columns = ["c"]
+        columns = [self.COLUMN_FAMILY]
 
         timer = time.time()
 
@@ -355,6 +358,7 @@ class TimeSeriesStore(object):
     MAX_GET_SIZE = 400 * 24 * 60 * 60  # A bit more than a year
     SORTED = True
     KEY_SCHEMA = "{part}#{sort}"
+    META_COLUMN_FAMILY = "_meta"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -380,7 +384,7 @@ class TimeSeriesStore(object):
 
     @classmethod
     def get_table_definitions(cls):
-        return {cls.TABLENAME: ["_meta", "_v"]}
+        return {cls.TABLENAME: [cls.META_COLUMN_FAMILY, "_v"]}
 
     def all_column_families(self):
         base = self.get_table_definitions()[self.TABLENAME]
@@ -427,7 +431,7 @@ class TimeSeriesStore(object):
             row_keys.append(row_key)
             data = {}
             for timestamp, val in bucket:
-                cn = "{}:{}".format(metric_object.id, timestamp)
+                cn = FColumn(metric_object.id, timestamp)
                 data[cn] = val
             upserts.append(RowUpsert(row_key, data))
 
@@ -671,6 +675,7 @@ class EventStore(object):
     DEFAULT_SERIES_TYPE = EventSeriesType.DAILY
     SORTED = True
     KEY_SCHEMA = "{part}#{part}#{sort}"
+    COLUMN_FAMILY = "e"
 
     def __init__(self, connection_object):
         self.connection_object = connection_object
@@ -684,7 +689,7 @@ class EventStore(object):
 
     @classmethod
     def get_table_definitions(cls):
-        return {cls.TABLENAME: ["e"]}
+        return {cls.TABLENAME: [cls.COLUMN_FAMILY]}
 
     def all_column_families(self):
         return self.get_table_definitions()[self.TABLENAME]
@@ -757,7 +762,7 @@ class EventStore(object):
             row_keys.append(row_key)
             data = {}
             for timestamp, val in bucket:
-                cn = "e:{}".format(timestamp)
+                cn = FColumn(self.COLUMN_FAMILY, timestamp)
                 data[cn] = val
             upserts.append(RowUpsert(row_key, data))
 

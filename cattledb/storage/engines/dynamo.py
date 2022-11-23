@@ -263,7 +263,7 @@ class DynamoTable(StorageTable):
 
     def increment_counter(self, row_id, column, value):
         if ":" in column:
-            cf, k = column.split(":", 1)
+            cf, k = column.parts()
         else:
             cf = "default"
             k = column
@@ -430,7 +430,7 @@ class DynamoTable(StorageTable):
         rows = defaultdict(dict)
         for key, val in values.items():
             if ":" in key:
-                cf, k = key.split(":", 1)
+                cf, k = key.parts()
             else:
                 cf = "default"
                 k = key

@@ -123,6 +123,13 @@ class BigtableTable(StorageTable):
         self._low_level = low_level
 
     @classmethod
+    def _encode_column(cls, fcolumn):
+        # We will convert everything to a string
+        # strings are utf8 encoded
+        column_family, col = fcolumn.parts()
+        return str(column_family).encode("utf8"), str(col).encode("utf8")
+
+    @classmethod
     def partial_row_to_ordered_dict(cls, row_data):
         result = OrderedDict()
         for column_family_id, columns in row_data._cells.items():
@@ -140,8 +147,8 @@ class BigtableTable(StorageTable):
 
     def write_cell(self, row_id, column, value):
         row = self._low_level.direct_row(row_id.encode("utf-8"))
-        column_family, col = column.split(":", 1)
-        row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
+        column_family, col = self._encode_column(column)
+        row.set_cell(column_family, col, value)
         row.commit()
         return 1
 
@@ -178,8 +185,8 @@ class BigtableTable(StorageTable):
     def upsert_row(self, row_id, values):
         row = self._low_level.direct_row(row_id)
         for c, value in values.items():
-            column_family, col = c.split(":", 1)
-            row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
+            column_family, col = self._encode_column(c)
+            row.set_cell(column_family, col, value)
         response = self._low_level.mutate_rows([row])[0]
         if response.code != 0:
             raise ValueError("Bigtable upsert failed with: {} - {}".format(response.code, response.message))
@@ -190,8 +197,8 @@ class BigtableTable(StorageTable):
         for r in row_upserts:
             row = self._low_level.direct_row(r.row_key)
             for c, value in r.cells.items():
-                column_family, col = c.split(":", 1)
-                row.set_cell(column_family.encode("utf-8"), col.encode("utf-8"), value)
+                column_family, col = self._encode_column(c)
+                row.set_cell(column_family, col, value)
             rows.append(row)
         responses = self._low_level.mutate_rows(rows)
         for r in responses:
@@ -303,23 +310,22 @@ class BigtableTable(StorageTable):
         :returns: Counter value after incrementing.
         """
         row = self._low_level.append_row(row_id.encode("utf-8"))
-        column_family_id, column_qualifier = column.split(':')
-        row.increment_cell_value(column_family_id.encode("utf-8"),
-                                 column_qualifier.encode("utf-8"), value)
+        column_family_id, column_qualifier = self._encode_column(column)
+        row.increment_cell_value(column_family_id, column_qualifier, value)
         modified_cells = row.commit()
 
-        inner_keys = list(modified_cells[column_family_id].keys())
+        inner_keys = list(modified_cells[column.cf].keys())
         if not inner_keys:
-            raise KeyError(column_qualifier)
+            raise KeyError(str(column))
 
         if isinstance(inner_keys[0], bytes):
             column_cells = modified_cells[
-                column_family_id][column_qualifier.encode("latin-1")]
+                column.cf][column.cn.encode("latin-1")]
         elif isinstance(inner_keys[0], str):
             column_cells = modified_cells[
-                column_family_id][column_qualifier]
+                column.cf][column.cn]
         else:
-            raise KeyError(column_qualifier)
+            raise KeyError(str(column))
 
         # Make sure there is exactly one cell in the column.
         if len(column_cells) != 1:

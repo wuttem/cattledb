@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from builtins import str
-
 from setuptools.command.test import test as TestCommand
 
 import sys

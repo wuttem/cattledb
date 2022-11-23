@@ -10,7 +10,7 @@ import datetime
 
 
 from cattledb.storage.connection import Connection
-from cattledb.storage.models import RowUpsert
+from cattledb.storage.models import RowUpsert, FColumn
 
 
 class LocalSQLTest(unittest.TestCase):
@@ -32,20 +32,20 @@ class LocalSQLTest(unittest.TestCase):
         db = Connection(engine="localsql", engine_options={"data_dir": "."})
         db.database_init(silent=True)
 
-        db.write_cell("metadata", "abc123", "p:foo", "bär".encode("utf-8"))
+        db.write_cell("metadata", "abc123", FColumn.from_string("p:foo"), "bär".encode("utf-8"))
 
         res = db.read_row("metadata", "abc123")
         self.assertEqual(res["p:foo"].decode("utf-8"), "bär")
 
     def test_rows(self):
         inserts = []
-        inserts.append(RowUpsert("abc#1#1", {"p:k": b"11"}))
-        inserts.append(RowUpsert("abc#1#2", {"p:k": b"12"}))
-        inserts.append(RowUpsert("abc#2#1", {"p:k": b"21", "i:k": b"21"}))
-        inserts.append(RowUpsert("abc#2#2", {"p:k": b"22", "i:k": b"22"}))
-        inserts.append(RowUpsert("abc#2#3", {"p:k": b"23", "i:k": b"23"}))
-        inserts.append(RowUpsert("abc#3#1", {"p:k": b"31"}))
-        inserts.append(RowUpsert("abc#3#2", {"p:k": b"32"}))
+        inserts.append(RowUpsert("abc#1#1", {FColumn.from_string("p:k"): b"11"}))
+        inserts.append(RowUpsert("abc#1#2", {FColumn.from_string("p:k"): b"12"}))
+        inserts.append(RowUpsert("abc#2#1", {FColumn.from_string("p:k"): b"21", FColumn.from_string("i:k"): b"21"}))
+        inserts.append(RowUpsert("abc#2#2", {FColumn.from_string("p:k"): b"22", FColumn.from_string("i:k"): b"22"}))
+        inserts.append(RowUpsert("abc#2#3", {FColumn.from_string("p:k"): b"23", FColumn.from_string("i:k"): b"23"}))
+        inserts.append(RowUpsert("abc#3#1", {FColumn.from_string("p:k"): b"31"}))
+        inserts.append(RowUpsert("abc#3#2", {FColumn.from_string("p:k"): b"32"}))
 
         db = Connection(engine="localsql", engine_options={"data_dir": "."})
         db.database_init(silent=True)

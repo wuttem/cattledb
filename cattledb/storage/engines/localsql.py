@@ -52,8 +52,10 @@ class SQLiteEngine(StorageEngine):
         full_table_name = self.get_full_table_name(table_name)
         _SQL = """CREATE TABLE {}
         (
-            k TEXT PRIMARY KEY,
-            row_meta TEXT
+            _k TEXT NOT NULL,
+            _c TEXT NOT NULL,
+            _row_meta TEXT,
+            CONSTRAINT pk PRIMARY KEY(_k,_c)
         )
         """.format(full_table_name)
         try:
@@ -109,26 +111,26 @@ class SQLiteTable(StorageTable):
         return fam, col
 
     def decode_row_data(self, row_data, column_names):
-        d = OrderedDict()
-        for col_name, raw_val in zip(column_names, row_data):
-            if col_name == "k" or col_name == "row_meta":
-                continue
-            if raw_val is None:
-                continue
-            decoded = json.loads(raw_val)
-            assert decoded
-            for k, v in decoded.items():
-                val = base64.b64decode(v)
-                col = self.build_column(col_name, k)
-                d[col] = val
-        return d
+        results = OrderedDict()
+        # k_idx = column_names.index("_k")
+        c_idx = column_names.index("_c")
+        for r in row_data:
+            # k = row_data[k_idx]
+            cn = r[c_idx]
+            for col_name, raw_val in zip(column_names, r):
+                if col_name == "_k" or col_name == "_row_meta" or col_name == "_c":
+                    continue
+                if raw_val is None:
+                    continue
+                results[self.build_column(col_name, cn)] = base64.b64decode(raw_val)
+        return results
 
     @classmethod
     def build_column(cls, fam, col):
         return "{}:{}".format(fam, col)
 
     def _read_column_family(self, row_id, column_family):
-        _SQL = "SELECT {} FROM {} WHERE k = ?;".format(column_family, self.table)
+        _SQL = "SELECT {} FROM {} WHERE _k = ?;".format(column_family, self.table)
         cur = self.con.cursor()
         cur.execute(_SQL, (row_id,))
         res = cur.fetchone()
@@ -137,39 +139,36 @@ class SQLiteTable(StorageTable):
         return None
 
     def _write_cells(self, row_id, column_family, values):
-        old_col = self._read_column_family(row_id, column_family)
-        if old_col is None:
-            d = {}
-        else:
-            d = dict(old_col)
-        for k, v in values.items():
-            fam, col = self.split_column(k)
-            assert fam == column_family
-            d[col] = base64.b64encode(v).decode('ascii')
-        # Below is the SQLite >3.24 version
-        # _SQL = 'INSERT INTO {} (k, {}) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET {} = ? WHERE k = ?'.format(self.table, fam, fam)
-        _SQL_UPDATE = 'UPDATE {} SET {} = ? WHERE k = ?;'.format(self.table, fam)
-        _SQL_INSERT = 'INSERT INTO {} (k, {}) SELECT ?, ? WHERE (Select Changes() = 0);'.format(self.table, fam)
         cur = self.con.cursor()
-        raw_value = json.dumps(d)
-        # try update
-        cur.execute(_SQL_UPDATE, (raw_value, row_id,))
-        # try insert
-        cur.execute(_SQL_INSERT, (row_id, raw_value,))
+        for col, v in values:
+            raw_value = base64.b64encode(v).decode('ascii')
+            # Modern SQLITE3
+            # _SQL_UPSERT = 'INSERT INTO {}(_k, _c, {}) VALUES(?, ?, ?) ON CONFLICT(_k,_c) DO UPDATE SET {}=excluded.{};'.format(
+            #     self.table, column_family, column_family, column_family)
+            # cur.execute(_SQL_UPSERT, (row_id, col, raw_value,))
+            # OLD SQLITE
+            _SQL_INSERT = 'INSERT OR IGNORE INTO {} (_k, _c, {}) VALUES(?, ?, ?);'.format(self.table, column_family)
+            _SQL_UPDATE = 'UPDATE {} SET {} = ? WHERE _k = ? AND _c = ?;'.format(self.table, column_family)
+            # try insert
+            cur.execute(_SQL_INSERT, (row_id, col, raw_value,))
+            # try update
+            cur.execute(_SQL_UPDATE, (raw_value, row_id, col,))
+
         self.con.commit()
         return cur.lastrowid
 
     def write_cell(self, row_id, column, value):
-        fam, col = self.split_column(column)
-        return self._write_cells(row_id, fam, {column: value})
+        fam, col = column.parts()
+        return self._write_cells(row_id, fam, [(col, value)])
 
     def read_row(self, row_id, column_families=None):
         if column_families is None:
             sel = "*"
         else:
-            sel = ", ".join(["k"] + column_families)
-        _SQL = "SELECT {} FROM {} WHERE k = ?;".format(sel, self.table)
+            sel = ", ".join(["_k", "_c"] + column_families)
+        _SQL = "SELECT {} FROM {} WHERE _k = ?;".format(sel, self.table)
         cur = self.con.cursor()
+
         try:
             cur.execute(_SQL, (row_id,))
         except OperationalError as e:
@@ -178,7 +177,7 @@ class SQLiteTable(StorageTable):
             else:
                 raise
         cols = [t[0] for t in cur.description]
-        res = cur.fetchone()
+        res = cur.fetchall()
         if res:
             return self.decode_row_data(res, cols)
         raise KeyError("row {} not found".format(row_id))
@@ -195,11 +194,11 @@ class SQLiteTable(StorageTable):
         self.con.commit()
 
     def upsert_row(self, row_id, values):
-        inserts = defaultdict(dict)
+        inserts = defaultdict(list)
         # sort by family
         for k, v in values.items():
-            fam, col = self.split_column(k)
-            inserts[fam][k] = v
+            fam, col = k.parts()
+            inserts[fam].append((col, v))
         for fam, vals in inserts.items():
             self._write_cells(row_id, fam, vals)
         return True
@@ -220,33 +219,34 @@ class SQLiteTable(StorageTable):
         if column_families is None:
             sel = "*"
         else:
-            sel = ", ".join(["k"] + column_families)
+            sel = ", ".join(["_k", "_c"] + column_families)
 
         params = []
         if row_keys is not None:
             filter_terms = []
             for r in row_keys:
-                filter_terms.append("k = ?")
+                filter_terms.append("_k = ?")
                 params.append(r)
             filter = " OR ".join(filter_terms)
         elif start_key is not None:
-            filter = "k >= ?"
+            filter = "_k >= ?"
             params.append(start_key)
             if end_key is not None:
-                filter = filter + " AND k <= ?"
+                filter = filter + " AND _k <= ?"
                 params.append(end_key)
         else:
             raise ValueError("use row_keys or start_key parameter")
 
-        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
+        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY _k, _c;".format(sel, self.table, filter)
         cur = self.con.cursor()
         cur.execute(_SQL, tuple(params))
         cols = [t[0] for t in cur.description]
-        # first should be key
-        assert cols[0] == "k"
+        # first should be key second col
+        assert cols[0] == "_k"
+        assert cols[1] == "_c"
 
         for row in cur:
-            curr_row_dict = self.decode_row_data(row, cols)
+            curr_row_dict = self.decode_row_data([row], cols)
             rk = row[0]
             if len(curr_row_dict) == 0:
                 continue
@@ -259,18 +259,20 @@ class SQLiteTable(StorageTable):
         if column_families is None:
             sel = "*"
         else:
-            sel = ", ".join(["k"] + column_families)
+            sel = ", ".join(["_k", "_c"] + column_families)
 
-        filter = "k >= ?"
-        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY k;".format(sel, self.table, filter)
+        filter = "_k >= ?"
+        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY _k, _c;".format(sel, self.table, filter)
         cur = self.con.cursor()
         cur.execute(_SQL, (start_key,))
         cols = [t[0] for t in cur.description]
         # first should be key
-        assert cols[0] == "k"
+        # first should be key second col
+        assert cols[0] == "_k"
+        assert cols[1] == "_c"
 
         for row in cur:
-            curr_row_dict = self.decode_row_data(row, cols)
+            curr_row_dict = self.decode_row_data([row], cols)
             rk = row[0]
             if len(curr_row_dict) == 0:
                 continue
@@ -279,7 +281,7 @@ class SQLiteTable(StorageTable):
             return (rk, curr_row_dict)
 
     def increment_counter(self, row_id, column, value):
-        fam, col = self.split_column(column)
+        fam, col = column.parts()
         try:
             d = self.read_row(row_id, column_families=[fam])
             b = d.get(column, None)
@@ -302,5 +304,5 @@ class SQLiteTable(StorageTable):
         _SQL = "PRAGMA table_info('{}');".format(self.table)
         cur = self.con.cursor()
         cur.execute(_SQL)
-        columns = [r[1] for r in cur if r[1] not in ("row_meta", "k")]
+        columns = [r[1] for r in cur if r[1] not in ("_row_meta", "_k", "_c")]
         return columns
