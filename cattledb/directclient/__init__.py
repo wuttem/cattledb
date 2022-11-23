@@ -56,13 +56,14 @@ class CDBClient(object):
     _enforce_read_only = False
 
     def __init__(self, engine, engine_options, table_prefix="cdb",
-                 read_only=True, admin=False, _config=None):
+                 read_only=True, admin=False, _config=None,
+                 event_definitions=None, metric_definitions=None):
         if CDBClient._enforce_read_only and not read_only:
             raise RuntimeError("Direct CDBClient only allowed for read_only access")
         self.read_only = read_only
         self.db = Connection(engine=engine, engine_options=engine_options, read_only=read_only,
-                             table_prefix=table_prefix, admin=admin, _config=_config)
-
+                             table_prefix=table_prefix, admin=admin, _config=_config, 
+                             metric_definitions=metric_definitions, event_definitions=event_definitions)
 
     @classmethod
     def from_config(cls, config):

@@ -1,6 +1,6 @@
 import os
 
-from cattledb.settings.default import *
+from cattledb.settings.testing_base import *
 
 os.environ["DYNAMO_EMULATOR_HOST"] = "localhost:8000"
 
