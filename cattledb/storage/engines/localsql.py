@@ -185,11 +185,11 @@ class SQLiteTable(StorageTable):
     def delete_row(self, row_id, column_families=None):
         cur = self.con.cursor()
         if column_families is None:
-            _SQL = "DELETE FROM {} WHERE k = ?;".format(self.table)
+            _SQL = "DELETE FROM {} WHERE _k = ?;".format(self.table)
             cur.execute(_SQL, (row_id,))
         else:
             ups = ", ".join(["{} = null".format(c) for c in column_families])
-            _SQL = "UPDATE {} SET {} WHERE k = ?;".format(self.table, ups)
+            _SQL = "UPDATE {} SET {} WHERE _k = ?;".format(self.table, ups)
             cur.execute(_SQL, (row_id,))
         self.con.commit()
 
@@ -262,7 +262,7 @@ class SQLiteTable(StorageTable):
             sel = ", ".join(["_k", "_c"] + column_families)
 
         filter = "_k >= ?"
-        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY _k, _c;".format(sel, self.table, filter)
+        _SQL = "SELECT {} FROM {} WHERE {} ORDER BY _k ASC, _c DESC;".format(sel, self.table, filter)
         cur = self.con.cursor()
         cur.execute(_SQL, (start_key,))
         cols = [t[0] for t in cur.description]
